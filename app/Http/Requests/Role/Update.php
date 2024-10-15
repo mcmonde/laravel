@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Requests\Log;
+namespace App\Http\Requests\Role;
 
+use App\Rules\UniqueColumnUpdate;
 use Illuminate\Foundation\Http\FormRequest;
 use Bouncer;
 
@@ -9,13 +10,14 @@ class Update extends FormRequest
 {
     public function authorize(): bool
     {
-        return Bouncer::can('logs.update');
+        return Bouncer::can('roles.update');
     }
 
     public function rules(): array
     {
+        $id = $this->route('roles');
         return [
-            // custom rules here.
+            'title' => ['required', new UniqueColumnUpdate('roles',$id)]
         ];
     }
 }

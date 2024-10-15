@@ -44,7 +44,8 @@ class LogController extends Controller
 
     public function store(Store $request): JsonResponse
     {
-        $data = $this->LogRepository->store($request, $this->selected_relation_columns_only, $this->headers);
+        $payload = $request->validated();
+        $data = $this->LogRepository->store($payload, $this->selected_relation_columns_only, $this->headers);
         return $this->LogRepository->getJsonResponse($data);
     }
 
@@ -62,7 +63,8 @@ class LogController extends Controller
 
     public function update(Update $request, $id): JsonResponse
     {
-        $data = $this->LogRepository->update($request, $id, $this->selected_relation_columns_only, $this->headers);
+        $payload = $request->validated();
+        $data = $this->LogRepository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
         return $this->LogRepository->getJsonResponse($data);
     }
 

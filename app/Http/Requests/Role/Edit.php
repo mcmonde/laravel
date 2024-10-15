@@ -1,25 +1,23 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Role;
 
 use App\Traits\PayloadRuleTrait;
-use Bouncer;
 use Illuminate\Foundation\Http\FormRequest;
+use Bouncer;
 
-class StoreLogRequest extends FormRequest
+class Edit extends FormRequest
 {
     use PayloadRuleTrait;
 
     public function authorize(): bool
     {
-        return Bouncer::can('{{ ability }}');
+        return Bouncer::can('roles.edit');
     }
 
     public function rules(): array
     {
-        $additional_rules = [
-            // custom rules here.
-        ];
+        $additional_rules = [];
 
         return array_merge($this->payloadRules(), $additional_rules);
     }

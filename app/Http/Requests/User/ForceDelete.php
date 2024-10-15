@@ -1,25 +1,23 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\User;
 
 use App\Traits\PayloadRuleTrait;
-use Bouncer;
 use Illuminate\Foundation\Http\FormRequest;
+use Bouncer;
 
-class UpdateLogRequest extends FormRequest
+class ForceDelete extends FormRequest
 {
     use PayloadRuleTrait;
 
     public function authorize(): bool
     {
-        return Bouncer::can('{{ ability }}');
+        return Bouncer::can('users.force-delete');
     }
 
     public function rules(): array
     {
-        $additional_rules = [
-            // custom rules here.
-        ];
+        $additional_rules = [];
 
         return array_merge($this->payloadRules(), $additional_rules);
     }

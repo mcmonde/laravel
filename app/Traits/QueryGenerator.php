@@ -13,9 +13,9 @@ use Illuminate\Support\Str;
 
 trait QueryGenerator
 {
-    public function index($request, $selected_relation_columns_only = [], $headers = []): array
+    public function index($payload, $selected_relation_columns_only = [], $headers = []): array
     {
-        $excludedIds = $request['excluded_id'] ?? null;
+        $excludedIds = $payload['excluded_id'] ?? null;
 
         $tableName = $this->model->getTable();
         $query = $this->model::query();
@@ -31,7 +31,7 @@ trait QueryGenerator
         }
 
         // Apply joins for foreign tables via separate function
-        $this->applyJoins($query, $foreignRelations, $tableName);
+        $this->applyLeftJoins($query, $foreignRelations, $tableName);
 
         // Exclude specific IDs if provided
         if ($excludedIds) {
@@ -39,11 +39,11 @@ trait QueryGenerator
         }
 
         // Handle search filters
-        $this->search($request, $query, $selects);
-        $this->searchGlobal($request, $query, $selects);
+        $this->search($payload, $query, $selects);
+        $this->searchGlobal($payload, $query, $selects);
 
         // Apply ordering
-        foreach ($this->orderBy($request) as $order) {
+        foreach ($this->orderBy($payload) as $order) {
             $query->orderBy($order['order_by'], $order['sort_order']);
         }
 
@@ -51,7 +51,7 @@ trait QueryGenerator
         $total = $query->count();
 
         // Apply pagination logic
-        $pagination = $this->paginate($request, $total);
+        $pagination = $this->paginate($payload, $total);
         $list = $query->skip($pagination['skip'])->take($pagination['take'])->get();
 
         // Return if no results found
@@ -112,11 +112,11 @@ trait QueryGenerator
         ]);
     }
 
-    public function store($request, $selected_relation_columns_only = [], $headers = []): array
+    public function store($payload, $selected_relation_columns_only = [], $headers = []): array
     {
         DB::beginTransaction();
         try {
-            $data = $this->model::create($request->validated());
+            $data = $this->model::create($payload);
 
             $model_name = $this->model->getTable();
 
@@ -153,9 +153,9 @@ trait QueryGenerator
     public function edit($id, $selected_relation_columns_only = []): array
     {
         $model_name = $this->model->getTable();
-        $request = ['search' => [['key' => "$model_name.id", 's' => $id,]]];
+        $payload = ['search' => [['key' => "$model_name.id", 's' => $id,]]];
 
-        $result = $this->index($request, $selected_relation_columns_only);
+        $result = $this->index($payload, $selected_relation_columns_only);
 
         if ($result['body'])
             $result['message'] = 'Editing data.';
@@ -163,7 +163,7 @@ trait QueryGenerator
         return $result;
     }
 
-    public function update($request, $id, $selected_relation_columns_only = [], $headers = []): array
+    public function update($payload, $id, $selected_relation_columns_only = [], $headers = []): array
     {
         $model_name = $this->model->getTable();
         $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $id,]]], $selected_relation_columns_only, $headers);
@@ -171,7 +171,7 @@ trait QueryGenerator
         if ($result['body']) {
             DB::beginTransaction();
             try {
-                $this->model::where('id', $id)->update($request->validated());
+                $this->model::where('id', $id)->update($payload);
 
                 $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $id,]]]);
                 $result['message'] = 'Successfully updated data.';
@@ -204,7 +204,7 @@ trait QueryGenerator
         DB::beginTransaction();
         try {
             $model_name = $this->model->getTable();
-            $request = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+            $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
             $data->delete();
 
             DB::commit();
@@ -229,7 +229,7 @@ trait QueryGenerator
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => $this->index($request, $selected_relation_columns_only)['body'],
+            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
             'searchable' => null,
         ]);
     }
@@ -249,7 +249,7 @@ trait QueryGenerator
         }
 
         $model_name = $this->model->getTable();
-        $request = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
 
         // TODO add checking for relations before permanent deletion.
         DB::beginTransaction();
@@ -277,7 +277,7 @@ trait QueryGenerator
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => $this->index($request, $selected_relation_columns_only)['body'],
+            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
             'searchable' => null,
         ]);
     }
@@ -294,7 +294,7 @@ trait QueryGenerator
         }
 
         $model_name = $this->model->getTable();
-        $request = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
 
         DB::beginTransaction();
         try {
@@ -320,7 +320,7 @@ trait QueryGenerator
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => $this->index($request, $selected_relation_columns_only)['body'],
+            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
             'searchable' => null,
         ]);
     }
@@ -484,7 +484,7 @@ trait QueryGenerator
         return method_exists($query->getModel(), $relationship);
     }
 
-    protected function applyJoins($query, $foreignRelations, $tableName): void
+    protected function applyLeftJoins($query, $foreignRelations, $tableName): void
     {
         foreach ($foreignRelations as $relation) {
             $alias = $relation['table_alias'] ?? '';
@@ -502,11 +502,11 @@ trait QueryGenerator
         }
     }
 
-    public function search($request, $query, $selects): void
+    public function search($payload, $query, $selects): void
     {
-        if (isset($request['search'])) {
-            if (is_array($request['search'])) {
-                foreach ($request['search'] as $search) {
+        if (isset($payload['search'])) {
+            if (is_array($payload['search'])) {
+                foreach ($payload['search'] as $search) {
                     $s = trim($search['s'] ?? '');
                     $key_index = array_search($search['key'], array_column($selects['columns'], 'column'));
 
@@ -522,15 +522,15 @@ trait QueryGenerator
             }
         }
 
-        if (!empty($request['date_column'])) {
-            $key_index = array_search($request['date_column'], array_column($selects['columns'], 'column'));
+        if (!empty($payload['date_column'])) {
+            $key_index = array_search($payload['date_column'], array_column($selects['columns'], 'column'));
             if ($key_index !== false) {
                 if ($selects['columns'][$key_index]['type'] == 'timestamp') {
-                    if (!empty($request['date_from'])) {
-                        if (!empty($request['date_to'])) {
-                            $query->whereBetween($request['date_column'], [$request['date_from'], $request['date_to']]);
+                    if (!empty($payload['date_from'])) {
+                        if (!empty($payload['date_to'])) {
+                            $query->whereBetween($payload['date_column'], [$payload['date_from'], $payload['date_to']]);
                         } else {
-                            $query->whereBetween($request['date_column'], [$request['date_from'], $request['date_from']]);
+                            $query->whereBetween($payload['date_column'], [$payload['date_from'], $payload['date_from']]);
                         }
                     }
                 }
@@ -538,36 +538,36 @@ trait QueryGenerator
         }
     }
 
-    public function searchGlobal($request, $query, $selects, $where = true): void
+    public function searchGlobal($payload, $query, $selects, $where = true): void
     {
-        if (isset($request['search_global']) && $request['search_global']) {
-            //            $dateTimeObject = \DateTime::createFromFormat('Y-m-d H:i:s', $request['search_global']);
-            //            if ( ctype_digit($request['search_global']) || is_bool($request['search_global']) ||
+        if (isset($payload['search_global']) && $payload['search_global']) {
+            //            $dateTimeObject = \DateTime::createFromFormat('Y-m-d H:i:s', $payload['search_global']);
+            //            if ( ctype_digit($payload['search_global']) || is_bool($payload['search_global']) ||
             //                ($dateTimeObject !== false && is_a($dateTimeObject, \DateTime::class))) {
             //                $operator = '=';
-            //                $search = $request['search_global'];
+            //                $search = $payload['search_global'];
             //            } else {
             //                $operator = 'ilike';
-            //                $search = "%".$request['search_global']."%";
+            //                $search = "%".$payload['search_global']."%";
             //            }
 
             if ($where) {
-                $query->where(function ($query) use ($selects, $request) {
-                    $this->generator($query, $selects, $request);
+                $query->where(function ($query) use ($selects, $payload) {
+                    $this->generator($query, $selects, $payload);
                 });
             } else {
-                $query->orWhere(function ($query) use ($selects, $request) {
-                    $this->generator($query, $selects, $request);
+                $query->orWhere(function ($query) use ($selects, $payload) {
+                    $this->generator($query, $selects, $payload);
                 });
             }
         }
     }
 
-    public function havingSearch($request, $query, $selects): void
+    public function havingSearch($payload, $query, $selects): void
     {
-        if (isset($request['search'])) {
-            if (is_array($request['search'])) {
-                foreach ($request['search'] as $search) {
+        if (isset($payload['search'])) {
+            if (is_array($payload['search'])) {
+                foreach ($payload['search'] as $search) {
                     $s = trim($search['s']);
                     $key_index = array_search($search['key'], array_column($selects['columns'], 'column'));
 
@@ -583,15 +583,15 @@ trait QueryGenerator
             }
         }
 
-        if (!empty($request['date_column'])) {
-            $key_index = array_search($request['date_column'], array_column($selects['columns'], 'column'));
+        if (!empty($payload['date_column'])) {
+            $key_index = array_search($payload['date_column'], array_column($selects['columns'], 'column'));
             if ($key_index !== false) {
                 if ($selects['columns'][$key_index]['type'] == 'timestamp') {
-                    if (!empty($request['date_from'])) {
-                        if (!empty($request['date_to'])) {
-                            $query->havingBetween($request['date_column'], [$request['date_from'], $request['date_to']]);
+                    if (!empty($payload['date_from'])) {
+                        if (!empty($payload['date_to'])) {
+                            $query->havingBetween($payload['date_column'], [$payload['date_from'], $payload['date_to']]);
                         } else {
-                            $query->havingBetween($request['date_column'], [$request['date_from'], $request['date_from']]);
+                            $query->havingBetween($payload['date_column'], [$payload['date_from'], $payload['date_from']]);
                         }
                     }
                 }
@@ -599,30 +599,30 @@ trait QueryGenerator
         }
     }
 
-    public function havingSearchGlobal($request, $query, $selects, $where = true): void
+    public function havingSearchGlobal($payload, $query, $selects, $where = true): void
     {
-        if (isset($request['search_global']) && $request['search_global']) {
-            //            $dateTimeObject = \DateTime::createFromFormat('Y-m-d H:i:s', $request['search_global']);
-            //            if ( ctype_digit($request['search_global']) || is_bool($request['search_global']) ||
+        if (isset($payload['search_global']) && $payload['search_global']) {
+            //            $dateTimeObject = \DateTime::createFromFormat('Y-m-d H:i:s', $payload['search_global']);
+            //            if ( ctype_digit($payload['search_global']) || is_bool($payload['search_global']) ||
             //                ($dateTimeObject !== false && is_a($dateTimeObject, \DateTime::class))) {
             //                $operator = '=';
-            //                $search = $request['search_global'];
+            //                $search = $payload['search_global'];
             //            } else {
             //                $operator = 'ilike';
-            //                $search = "%".$request['search_global']."%";
+            //                $search = "%".$payload['search_global']."%";
             //            }
 
             if ($where) {
-                $this->generator($query, $selects, $request, 'having');
+                $this->generator($query, $selects, $payload, 'having');
             } else {
-                $this->generator($query, $selects, $request, 'orHaving');
+                $this->generator($query, $selects, $payload, 'orHaving');
             }
         }
     }
 
-    public function generator($query, $selects, $request, $condition = 'orWhere'): void
+    public function generator($query, $selects, $payload, $condition = 'orWhere'): void
     {
-        $search_global = $request['search_global'] ?? null;
+        $search_global = $payload['search_global'] ?? null;
 
         foreach ($selects['columns'] as $column) {
             $type = $column['type'];
@@ -630,10 +630,10 @@ trait QueryGenerator
                 continue;
                 // TODO improve this datetime searching.
 
-                //                        $query->$condition(function ($query) use ($request, $column) {
+                //                        $query->$condition(function ($query) use ($payload, $column) {
                 //                            $query->whereDate($column['column'], '=', date('Y-m-d', strtotime($search_global)))
                 //                                ->whereTime($column['column'], '>=', date('H:i:s', strtotime($search_global)))
-                //                                ->$condition(function ($query) use ($request, $column) {
+                //                                ->$condition(function ($query) use ($payload, $column) {
                 //                                    $query->whereDate($column['column'], '<>', date('Y-m-d', strtotime($search_global)))
                 //                                        ->whereTime($column['column'], '<', date('H:i:s', strtotime($search_global)));
                 //                                });
@@ -709,11 +709,11 @@ trait QueryGenerator
 
     }
 
-    public function orderBy($request): array
+    public function orderBy($payload): array
     {
         $order_by = [];
-        if (isset($request['list_orders']))
-            foreach ($request['list_orders'] as $order) {
+        if (isset($payload['list_orders']))
+            foreach ($payload['list_orders'] as $order) {
                 if (isset($order['order_by']) && isset($order['sort_order'])) {
                     if ($order['order_by'] != null && $order['order_by'] != "" &&  (strtolower(trim($order['sort_order'])) == 'asc' || strtolower(trim($order['sort_order'])) == 'desc')) {
                         $order_by[] = [
@@ -727,11 +727,11 @@ trait QueryGenerator
         return $order_by;
     }
 
-    public function paginate($request, $total): array
+    public function paginate($payload, $total): array
     {
-        $current_page = isset($request['page']) ? (is_numeric($request['page']) && $request['page'] > 0) ? $request['page'] : 1 : 1;
-        $take = isset($request['show']) ? (is_numeric($request['show']) ? $request['show'] : (($request['show'] == 'all') ? $this->model->count() : $total)) : 15;
-        $skip = (is_numeric($take) ? $take : 0) * ((isset($request['page']) && $request['page'] > 1) ? ($request['page'] - 1) : 0);
+        $current_page = isset($payload['page']) ? (is_numeric($payload['page']) && $payload['page'] > 0) ? $payload['page'] : 1 : 1;
+        $take = isset($payload['show']) ? (is_numeric($payload['show']) ? $payload['show'] : (($payload['show'] == 'all') ? $this->model->count() : $total)) : 15;
+        $skip = (is_numeric($take) ? $take : 0) * ((isset($payload['page']) && $payload['page'] > 1) ? ($payload['page'] - 1) : 0);
 
         return [
             'current_page' => $current_page,

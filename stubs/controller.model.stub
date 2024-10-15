@@ -45,7 +45,8 @@ class {{ class }} extends Controller
 
     public function store(Store $request): JsonResponse
     {
-        $data = $this->{{ model }}Repository->store($request, $this->selected_relation_columns_only, $this->headers);
+        $payload = $request->validated();
+        $data = $this->{{ model }}Repository->store($payload, $this->selected_relation_columns_only, $this->headers);
         return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
@@ -63,7 +64,8 @@ class {{ class }} extends Controller
 
     public function update(Update $request, $id): JsonResponse
     {
-        $data = $this->{{ model }}Repository->update($request, $id, $this->selected_relation_columns_only, $this->headers);
+        $payload = $request->validated();
+        $data = $this->{{ model }}Repository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
         return $this->{{ model }}Repository->getJsonResponse($data);
     }
 

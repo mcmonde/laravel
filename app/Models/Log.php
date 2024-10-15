@@ -1,14 +1,14 @@
 <?php
 
-namespace {{ namespace }};
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
-class {{ class }} extends Model
+class Log extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -17,7 +17,7 @@ class {{ class }} extends Model
     public function __construct(array $attributes = [])
     {
         parent::__construct($attributes);
-        $cache_name = "{{ class }}_model_columns";
+        $cache_name = "Log_model_columns";
 
         // Check if the column listing is cached
         if (!Cache::has($cache_name)) {

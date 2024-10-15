@@ -2,65 +2,86 @@
 
 namespace {{ namespace }};
 
-use {{ namespacedModel }};
+use App\Http\Requests\{{ model }}\Create;
+use App\Http\Requests\{{ model }}\Destroy;
+use App\Http\Requests\{{ model }}\Edit;
+use App\Http\Requests\{{ model }}\ForceDelete;
+use App\Http\Requests\{{ model }}\Index;
+use App\Http\Requests\{{ model }}\Restore;
+use App\Http\Requests\{{ model }}\Show;
+use App\Http\Requests\{{ model }}\Store;
+use App\Http\Requests\{{ model }}\Update;
+use App\Repositories\{{ model }}Repository;
 use {{ rootNamespace }}Http\Controllers\Controller;
-use {{ namespacedRequests }}
+use Illuminate\Http\JsonResponse;
 
 class {{ class }} extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+//    protected {{ model }}Repository ${{ model }}Repository;
+    protected array $selected_relation_columns_only = [
+//            "suppliers_encoded_by_foreign" => ['id', 'first_name', 'middle_name', 'last_name', 'email']
+        ];
+    protected array $headers = [
+//            ['text' => 'Supplier', 'value' => 'suppliers_name', 'align' => 'left', 'sortable' => false],
+        ];
+
+//    public function __construct({{ model }}Repository ${{ model }}Repository)
+//    {
+//        $this->{{ model }}Repository = ${{ model }}Repository;
+//    }
+
+    public function index(Index $request): JsonResponse
     {
-        //
+        $payload = $request->validated();
+        $data = $this->{{ model }}Repository->index($payload, $this->selected_relation_columns_only, $this->headers);
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(Create $request): JsonResponse
     {
-        //
+        $data = $this->{{ model }}Repository->create();
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store({{ storeRequest }} $request)
+    public function store(Store $request): JsonResponse
     {
-        //
+        $data = $this->{{ model }}Repository->store($request, $this->selected_relation_columns_only, $this->headers);
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show({{ model }} ${{ modelVariable }})
+    public function show(Show $request, $id): JsonResponse
     {
-        //
+        $data = $this->{{ model }}Repository->show($id, $this->selected_relation_columns_only);
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit({{ model }} ${{ modelVariable }})
+    public function edit(Edit $request, $id): JsonResponse
     {
-        //
+        $data = $this->{{ model }}Repository->edit($id, $this->selected_relation_columns_only);
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update({{ updateRequest }} $request, {{ model }} ${{ modelVariable }})
+    public function update(Update $request, $id): JsonResponse
     {
-        //
+        $data = $this->{{ model }}Repository->update($request, $id, $this->selected_relation_columns_only, $this->headers);
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy({{ model }} ${{ modelVariable }})
+    public function destroy(Destroy $request, $id): JsonResponse
     {
-        //
+        $data = $this->{{ model }}Repository->destroy($id, $this->selected_relation_columns_only);
+        return $this->{{ model }}Repository->getJsonResponse($data);
+    }
+
+    public function forceDelete(ForceDelete $request, $id): JsonResponse
+    {
+        $data = $this->{{ model }}Repository->forceDelete($id, $this->selected_relation_columns_only);
+        return $this->{{ model }}Repository->getJsonResponse($data);
+    }
+
+    public function restore(Restore $request, $id): JsonResponse
+    {
+        $data = $this->{{ model }}Repository->restore($id, $this->selected_relation_columns_only);
+        return $this->{{ model }}Repository->getJsonResponse($data);
     }
 }

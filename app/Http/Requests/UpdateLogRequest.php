@@ -1,12 +1,12 @@
 <?php
 
-namespace {{ namespace }};
+namespace App\Http\Requests;
 
 use App\Traits\PayloadRuleTrait;
-use Illuminate\Foundation\Http\FormRequest;
 use Bouncer;
+use Illuminate\Foundation\Http\FormRequest;
 
-class {{ class }} extends FormRequest
+class UpdateLogRequest extends FormRequest
 {
     use PayloadRuleTrait;
 
@@ -17,7 +17,9 @@ class {{ class }} extends FormRequest
 
     public function rules(): array
     {
-        $additional_rules = [];
+        $additional_rules = [
+            // custom rules here.
+        ];
 
         return array_merge($this->payloadRules(), $additional_rules);
     }

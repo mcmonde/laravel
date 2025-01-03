@@ -1,4 +1,5 @@
 {
+    "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
@@ -9,7 +10,7 @@
         "barryvdh/laravel-snappy": "^1.0",
         "h4cc/wkhtmltoimage-amd64": "0.12.x",
         "h4cc/wkhtmltopdf-amd64": "0.12.x",
-        "laravel/framework": "^11.9",
+        "laravel/framework": "^11.31",
         "laravel/sanctum": "^4.0",
         "laravel/scout": "^10.10",
         "laravel/tinker": "^2.9",

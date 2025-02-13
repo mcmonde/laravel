@@ -39,6 +39,7 @@ class {{ class }} extends Controller
 
     public function create(Create $request): JsonResponse
     {
+        $payload = $request->validated();
         $data = $this->{{ model }}Repository->create();
         return $this->{{ model }}Repository->getJsonResponse($data);
     }
@@ -52,12 +53,14 @@ class {{ class }} extends Controller
 
     public function show(Show $request, $id): JsonResponse
     {
+        $payload = $request->validated();
         $data = $this->{{ model }}Repository->show($id, $this->selected_relation_columns_only);
         return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
     public function edit(Edit $request, $id): JsonResponse
     {
+        $payload = $request->validated();
         $data = $this->{{ model }}Repository->edit($id, $this->selected_relation_columns_only);
         return $this->{{ model }}Repository->getJsonResponse($data);
     }
@@ -71,19 +74,22 @@ class {{ class }} extends Controller
 
     public function destroy(Destroy $request, $id): JsonResponse
     {
+        $payload = $request->validated();
         $data = $this->{{ model }}Repository->destroy($id, $this->selected_relation_columns_only);
         return $this->{{ model }}Repository->getJsonResponse($data);
     }
 
-    public function forceDelete(ForceDelete $request, $id): JsonResponse
-    {
-        $data = $this->{{ model }}Repository->forceDelete($id, $this->selected_relation_columns_only);
-        return $this->{{ model }}Repository->getJsonResponse($data);
-    }
+//  DEPRICATED. NO LONGER IN USE UNLESS ITS REALLY NECESSARY.
 
-    public function restore(Restore $request, $id): JsonResponse
-    {
-        $data = $this->{{ model }}Repository->restore($id, $this->selected_relation_columns_only);
-        return $this->{{ model }}Repository->getJsonResponse($data);
-    }
+//    public function forceDelete(ForceDelete $request, $id): JsonResponse
+//    {
+//        $data = $this->{{ model }}Repository->forceDelete($id, $this->selected_relation_columns_only);
+//        return $this->{{ model }}Repository->getJsonResponse($data);
+//    }
+//
+//    public function restore(Restore $request, $id): JsonResponse
+//    {
+//        $data = $this->{{ model }}Repository->restore($id, $this->selected_relation_columns_only);
+//        return $this->{{ model }}Repository->getJsonResponse($data);
+//    }
 }

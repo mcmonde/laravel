@@ -21,7 +21,8 @@
         "setasign/fpdf": "^1.8",
         "setasign/fpdi": "^2.6",
         "silber/bouncer": "^1.0",
-        "spatie/pdf-to-image": "^1.2"
+        "spatie/pdf-to-image": "^1.2",
+        "venturecraft/revisionable": "^1.41"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

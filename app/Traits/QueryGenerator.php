@@ -234,96 +234,96 @@ trait QueryGenerator
         ]);
     }
 
-    public function forceDelete($id, $selected_relation_columns_only = []): array
-    {
-        $data = $this->model::when(in_array(SoftDeletes::class, class_uses($this->model)), function ($q) {
-            $q->withTrashed();
-        })
-            ->find($id);
-
-        if (!$data) {
-            return [
-                'message' => 'No found data.',
-                'status' => 404,
-            ];
-        }
-
-        $model_name = $this->model->getTable();
-        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
-
-        // TODO add checking for relations before permanent deletion.
-        DB::beginTransaction();
-        try {
-            $data->forceDelete();
-            DB::commit();
-        } catch (\Exception $exception) {
-            DB::rollBack();
-            // Please review the Logs if there are errors.
-            return [
-                'message' => 'An error occurred while invoking permanent deletion.',
-                'error' => $exception->getMessage(),
-                'status' => 422
-            ];
-        }
-
-        return ([
-            'message' => 'Permanently deleted the data.',
-            'error' => null,
-            'current_page' => null,
-            'from' => null,
-            'to' => null,
-            'last_page' => null,
-            'skip' => null,
-            'take' => null,
-            'total' => null,
-            'headers' => null,
-            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
-            'searchable' => null,
-        ]);
-    }
-
-    public function restore($id, $selected_relation_columns_only = []): array
-    {
-        $data = $this->model::find($id);
-
-        if (!$data) {
-            return [
-                'message' => 'No found data.',
-                'status' => 404,
-            ];
-        }
-
-        $model_name = $this->model->getTable();
-        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
-
-        DB::beginTransaction();
-        try {
-            $data->restore();
-        } catch (\Exception $exception) {
-            DB::rollBack();
-            // Please review the Logs if there are errors.
-            return [
-                'message' => 'An error occurred while storing the purchase order.',
-                'error' => $exception->getMessage(),
-                'status' => 422
-            ];
-        }
-
-        return ([
-            'message' => 'Successfully restored data.',
-            'error' => null,
-            'current_page' => null,
-            'from' => null,
-            'to' => null,
-            'last_page' => null,
-            'skip' => null,
-            'take' => null,
-            'total' => null,
-            'headers' => null,
-            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
-            'searchable' => null,
-        ]);
-    }
+//    public function forceDelete($id, $selected_relation_columns_only = []): array
+//    {
+//        $data = $this->model::when(in_array(SoftDeletes::class, class_uses($this->model)), function ($q) {
+//            $q->withTrashed();
+//        })
+//            ->find($id);
+//
+//        if (!$data) {
+//            return [
+//                'message' => 'No found data.',
+//                'status' => 404,
+//            ];
+//        }
+//
+//        $model_name = $this->model->getTable();
+//        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+//
+//        // TODO add checking for relations before permanent deletion.
+//        DB::beginTransaction();
+//        try {
+//            $data->forceDelete();
+//            DB::commit();
+//        } catch (\Exception $exception) {
+//            DB::rollBack();
+//            // Please review the Logs if there are errors.
+//            return [
+//                'message' => 'An error occurred while invoking permanent deletion.',
+//                'error' => $exception->getMessage(),
+//                'status' => 422
+//            ];
+//        }
+//
+//        return ([
+//            'message' => 'Permanently deleted the data.',
+//            'error' => null,
+//            'current_page' => null,
+//            'from' => null,
+//            'to' => null,
+//            'last_page' => null,
+//            'skip' => null,
+//            'take' => null,
+//            'total' => null,
+//            'headers' => null,
+//            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+//            'searchable' => null,
+//        ]);
+//    }
+//
+//    public function restore($id, $selected_relation_columns_only = []): array
+//    {
+//        $data = $this->model::find($id);
+//
+//        if (!$data) {
+//            return [
+//                'message' => 'No found data.',
+//                'status' => 404,
+//            ];
+//        }
+//
+//        $model_name = $this->model->getTable();
+//        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+//
+//        DB::beginTransaction();
+//        try {
+//            $data->restore();
+//        } catch (\Exception $exception) {
+//            DB::rollBack();
+//            // Please review the Logs if there are errors.
+//            return [
+//                'message' => 'An error occurred while storing the purchase order.',
+//                'error' => $exception->getMessage(),
+//                'status' => 422
+//            ];
+//        }
+//
+//        return ([
+//            'message' => 'Successfully restored data.',
+//            'error' => null,
+//            'current_page' => null,
+//            'from' => null,
+//            'to' => null,
+//            'last_page' => null,
+//            'skip' => null,
+//            'take' => null,
+//            'total' => null,
+//            'headers' => null,
+//            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+//            'searchable' => null,
+//        ]);
+//    }
 
     // LIES CUSTOM QUERY GENERATORS HERE
 

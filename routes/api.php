@@ -41,13 +41,14 @@ Route::group(['middleware' => ["auth:sanctum", 'log.route']], function () {
                     Route::post($controller['slug'] . '/store', 'store')->name($controller['slug'] . '.store');
                     Route::match((['GET', 'POST']), $controller['slug'] . '/show/{' . $controller['name'] . '}', 'show')->name($controller['slug'] . '.show');
                     Route::match(['PUT', 'PATCH'], $controller['slug'] . '/{' . $controller['name'] . '}', 'update')->name($controller['slug'] . '.update');
-                    // Route::delete($controller['slug'] . '/force-delete/{' . $controller['name'] . '}', 'forceDelete')->name($controller['slug'] . '.force-delete');
 
                     // if the model uses soft-deletes enable these routes.
                     if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses('App\\Models\\' . $name_case))) {
                         Route::delete($controller['slug'] . '/delete/{' . $controller['name'] . '}', 'destroy')->name($controller['slug'] . '.destroy');
-                        // disabled at the moment
+
+                        // DEPRICATED. NO LONGER IN USE UNLESS ITS REALLY NECESSARY.
                         // Route::post($controller['slug'] . '/{' . $controller['name'] . '}' . '/restore', 'restore')->name($controller['slug'] . '.restore');
+                        // Route::delete($controller['slug'] . '/force-delete/{' . $controller['name'] . '}', 'forceDelete')->name($controller['slug'] . '.force-delete');
                     }
 
                     /*  TODO NEED TO RE-ASSIST THIS ROUTE SINCE NOT ALL CONTROLLERS NEED UPLOAD.

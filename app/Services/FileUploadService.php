@@ -4,6 +4,8 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
+use Exception;
 
 class FileUploadService
 {
@@ -11,56 +13,46 @@ class FileUploadService
     // composer: composer require league/flysystem-aws-s3-v3
     // link for details: https://packagist.org/packages/league/flysystem-aws-s3-v3
 
-    public function upload($file, $table_name = null, $root_folder = 'uploads'): string
+    public function upload(UploadedFile $file, ?string $table_name): string
     {
-        // Generate a unique local filename
+        if (empty($table_name)) {
+            throw new Exception('The table name parameter is required.');
+        }
+
+        $root_folder = config('filesystems.disks.digitalocean.root_path', 'sample-directory/uploads');
         $fileName = $this->generateFileName($file);
-        // Determine the upload path based on the table name
         $uploadPath = $this->generateUploadPath($root_folder, $table_name);
-        // Store the file
 
         try {
-            if(env('FILESYSTEM_DISK') == 'digitalocean') {
-                $filePath = Storage::disk('digitalocean')->putFile($uploadPath, $file, 'public');
-
-                if (empty($filePath)) {
-                    throw new \Exception('Failed to upload file to DigitalOcean Spaces');
-                }
+            if (config('filesystems.default') === 'digitalocean') {
+                $filePath = Storage::disk('digitalocean')->putFileAs($uploadPath, $file, $fileName, 'public');
             } else {
                 $filePath = $file->storeAs($uploadPath, $fileName, 'public');
-                if (empty($filePath)) {
-                    throw new \Exception('Failed to upload file to server.');
-                }
+            }
+
+            if (!$filePath) {
+                throw new Exception('Failed to upload file.');
             }
 
             return $filePath;
-        } catch (\Exception $exception) {
-            if (env('FILESYSTEM_DISK') == 'digitalocean') {
-                logger()->error('Error uploading file to DigitalOcean Spaces: ' . $exception->getMessage());
-            } else {
-                logger()->error('Error uploading file in your server: ' . $exception->getMessage());
-            }
+        } catch (Exception $exception) {
+            logger()->error("File upload error: {$exception->getMessage()}", [
+                'file_name' => $fileName,
+                'path' => $uploadPath
+            ]);
 
-            return '';
+            throw new Exception('File upload failed.');
         }
     }
 
-    public function generateFileName($file): string
+    private function generateFileName(UploadedFile $file): string
     {
-        $extension = $file->getClientOriginalExtension();
-        $randomName = Str::random(36);
-        $date = now()->format('YmdHis');
-
-        return "{$date}-{$randomName}.{$extension}";
+        // datetime-string(36).extension
+        return now()->format('YmdHis') . '-' . Str::random(36) . '.' . $file->getClientOriginalExtension();
     }
 
-    public function generateUploadPath($folder, $tableName): string
+    private function generateUploadPath(string $folder, string $tableName): string
     {
-        // Use the table name if provided, otherwise use a default folder
-        if ($tableName) {
-            return "{$folder}/{$tableName}";
-        } else {
-            return "{$folder}/default";
-        }
+        return "{$folder}/{$tableName}";
     }
 }

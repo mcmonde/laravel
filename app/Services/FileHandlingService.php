@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\UploadedFile;
 use Exception;
 
-class FileUploadService
+class FileHandlingService
 {
     // NOTE: if you use DIGITAL OCEAN, please install the composer package first.
     // composer: composer require league/flysystem-aws-s3-v3
@@ -54,5 +54,14 @@ class FileUploadService
     private function generateUploadPath(string $folder, string $tableName): string
     {
         return "{$folder}/{$tableName}";
+    }
+
+    public function getTemporaryUrl($filePath): ?string
+    {
+        if (!$filePath) {
+            return null;
+        }
+
+        return Storage::disk('digitalocean')->temporaryUrl($filePath, now()->addMinutes(config('filesystems.disks.digitalocean.expiration', 30)));
     }
 }

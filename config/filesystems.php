@@ -67,7 +67,9 @@ return [
             'endpoint' => env('DIGITALOCEAN_SPACES_ENDPOINT'),
             'region' => env('DIGITALOCEAN_SPACES_REGION'),
             'bucket' => env('DIGITALOCEAN_SPACES_BUCKET'),
+            'visibility' => 'private',
             'root_path' => env('DIGITALOCEAN_SPACES_ROOT_PATH'),
+            'expiration' => env('DIGITALOCEAN_SPACES_EXPIRATION'),
         ],
     ],
 

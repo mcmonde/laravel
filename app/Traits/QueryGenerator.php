@@ -50,6 +50,15 @@ trait QueryGenerator
         // Get total count for pagination
         $total = $query->count();
 
+        // NOTE! USE THIS ONLY WHEN YOU USE GROUP BY
+//        // Perform a subquery to count individual rows
+//        $subQuery = clone $query;
+//        $subQuery->select(DB::raw('COUNT(*) as count'))->getQuery();
+//        // Use the subquery to count rows
+//        $total = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
+//            ->mergeBindings($subQuery->getQuery())
+//            ->count();
+
         // Apply pagination logic
         $pagination = $this->paginate($payload, $total);
         $list = $query->skip($pagination['skip'])->take($pagination['take'])->get();

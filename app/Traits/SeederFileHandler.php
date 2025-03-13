@@ -64,7 +64,7 @@ trait SeederFileHandler
         ];
     }
 
-    public function IterateCSV($filename)
+    public function IterateCSV($filename): array
     {
         $csv = [];
 
@@ -85,7 +85,7 @@ trait SeederFileHandler
         ];
     }
 
-    public function checkColumns($table_name, $header, $exclude = [], $include=[])
+    public function checkColumns($table_name, $header, $exclude = [], $include=[]): array
     {
         $columns = DB::getSchemaBuilder()->getColumnListing($table_name);
 
@@ -111,7 +111,7 @@ trait SeederFileHandler
         }
     }
 
-    public function keyValueGenerator($csv, $columns)
+    public function keyValueGenerator($csv, $columns):array
     {
         $data = [];
         for ($i = 1; $i < count($csv); $i++) {

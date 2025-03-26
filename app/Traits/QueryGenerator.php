@@ -63,6 +63,13 @@ trait QueryGenerator
         $pagination = $this->paginate($payload, $total);
         $list = $query->skip($pagination['skip'])->take($pagination['take'])->get();
 
+        // NOTE: Use only when there is a need to convert json formatted columns or select query.
+//        $list->transform(function ($item) {
+//            $json_column_name = json_decode($item->json_column_name, true);
+//            $item->json_column_name = isset($json_column_name[0]['id']) ? $json_column_name : [];
+//            return $item;
+//        });
+
         // Return if no results found
         if ($list->isEmpty()) {
             return [

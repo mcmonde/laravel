@@ -19,6 +19,7 @@ trait QueryGenerator
 
         $tableName = $this->model->getTable();
         $query = $this->model::query();
+        $ability = Str::plural(str_replace('_', '-', Str::snake($tableName)));
 
         // Get relations of the current table
         $foreignRelations = $this->getForeignTableRelations($tableName);
@@ -85,6 +86,12 @@ trait QueryGenerator
                 'headers' => $headers,
                 'body' => null,
                 'searchable' => $selects['columns'],
+                'others'    => [
+                    'view'          => Bouncer::can($ability.'.show'),
+                    'store'         => Bouncer::can($ability.'.store'),
+                    'update'        => Bouncer::can($ability.'.update'),
+                    'delete'        => Bouncer::can($ability.'.destroy')
+                ]
             ];
         }
 
@@ -104,6 +111,12 @@ trait QueryGenerator
             'headers' => $headers,
             'body' => $list,
             'searchable' => $selects['columns'],
+            'others'    => [
+                'view'          => Bouncer::can($ability.'.show'),
+                'store'         => Bouncer::can($ability.'.store'),
+                'update'        => Bouncer::can($ability.'.update'),
+                'delete'        => Bouncer::can($ability.'.destroy')
+            ]
         ];
     }
 
@@ -187,7 +200,7 @@ trait QueryGenerator
         if ($result['body']) {
             DB::beginTransaction();
             try {
-                $this->model::where('id', $id)->update($payload);
+                $this->model::find($id)->update($payload);
 
                 $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $id,]]]);
                 $result['message'] = 'Successfully updated data.';

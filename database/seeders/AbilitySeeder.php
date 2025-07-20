@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use App\Traits\SeederFileHandlers;
+use App\Traits\SeederFileHandler;
 use Illuminate\Database\Seeder;
 
 class AbilitySeeder extends Seeder
 {
-    use SeederFileHandlers;
+    use SeederFileHandler;
 
     protected ModelNameHere $model;
 

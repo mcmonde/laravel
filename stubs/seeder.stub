@@ -4,11 +4,11 @@ namespace {{ namespace }};
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Traits\SeederFileHandlers;
+use App\Traits\SeederFileHandler;
 
 class {{ class }} extends Seeder
 {
-    use SeederFileHandlers;
+    use SeederFileHandler;
 
     protected ModelNameHere $model;
 

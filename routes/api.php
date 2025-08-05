@@ -5,16 +5,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 # LOGIN ROUTE ##########################################################################################################
-Route::get('/public-key', function () {
-    $keyPath = storage_path('app/keys/public.pem');
-
-    if (!file_exists($keyPath)) {
-        return response()->json(['error' => 'Public key not found.'], 404);
-    }
-
-    return response(file_get_contents($keyPath), 200)
-        ->header('Content-Type', 'text/plain');
-});
+Route::get('/public-key', [AuthController::class, 'publicKey'])
+    ->name('public-key');
 
 Route::middleware('log.route')->post('/auth/login', [AuthController::class, 'login'])
     ->name('api.login');

@@ -12,7 +12,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(RSAService::class, RSAService::class);
+        $this->app->singleton(RSAService::class);
     }
 
     /**

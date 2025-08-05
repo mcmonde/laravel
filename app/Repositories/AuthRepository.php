@@ -2,21 +2,34 @@
 
 namespace App\Repositories;
 
+use App\Services\RSAService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AuthRepository
 {
-    public function login($request): array
+    protected RSAService $rsaService;
+
+    public function __construct(RSAService $rsaService) {
+        $this->rsaService = $rsaService;
+    }
+    public function login($credentials): array
     {
+        $email = $credentials['email'];
+        $password = $credentials['password'];
+
+        if (env('ENABLE_LOGIN_RSA', false)) {
+           $password = $this->rsaService->decrypt($password);
+        }
+
         try {
-            if (Auth::attempt($request->only('email', 'password'))) {
+            if (Auth::attempt(['email'=> $email, 'password' => $password])) {
 
                 $user = Auth::user();
 
-                if ($user->status && $user->allow_login) {
-                    $user_agent = $request->header('User-Agent');
-                    $ip_address = $request->ip();
+                if ($user['status'] && $user['allow_login']) {
+                    $user_agent = $credentials['user_agent'];
+                    $ip_address = $credentials['ip_address'];
 
                     $token = $user->createToken('auth-token');
 
@@ -32,6 +45,7 @@ class AuthRepository
                     return ([
                         'message' => 'Logged in successfully.',
                         'user' => $user->load(['roles']),
+                        'encrypted' => env('ENABLE_LOGIN_RSA', false),
                         'token' => $token->plainTextToken,
                     ]);
                 } else {

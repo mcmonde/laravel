@@ -11,15 +11,15 @@ class RSAService implements CryptoServiceInterface
 
     public function __construct()
     {
-        $this->privateKey = file_get_contents(storage_path('keys/private.pem'));
+        $this->privateKey = file_get_contents(storage_path('app/keys/private.pem'));
     }
 
     public function decrypt(string $encrypted): ?string
     {
-        $result = null;
+        $decrypted = null;
 
-        if (openssl_private_decrypt(base64_decode($encrypted), $result, $this->privateKey)) {
-            return $result;
+        if (openssl_private_decrypt(base64_decode($encrypted), $decrypted, $this->privateKey)) {
+            return $decrypted;
         }
 
         Log::error('RSA decryption failed.');

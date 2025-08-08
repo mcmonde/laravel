@@ -45,6 +45,7 @@ class AuthRepository
                     return ([
                         'message' => 'Logged in successfully.',
                         'user' => $user->load(['roles']),
+                        'forbidden' => $user->getForbiddenAbilities(),
                         'encrypted' => env('ENABLE_LOGIN_RSA', false),
                         'token' => $token->plainTextToken,
                     ]);

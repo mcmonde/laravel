@@ -9,9 +9,13 @@ use Exception;
 
 class FileHandlingService
 {
-    // NOTE: if you use DIGITAL OCEAN, please install the composer package first.
+    // NOTE: if you use DIGITAL OCEAN SPACE, please install the composer package first.
     // composer: composer require league/flysystem-aws-s3-v3
     // link for details: https://packagist.org/packages/league/flysystem-aws-s3-v3
+
+    // NOTE: if you use AZURE STORAGE, please install the composer package first.
+    // composer: composer require league/flysystem-azure-blob-storage
+    // link for details: https://packagist.org/packages/league/flysystem-azure-blob-storage
 
     public function upload(UploadedFile $file, ?string $table_name): string
     {

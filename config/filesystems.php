@@ -71,6 +71,22 @@ return [
             'root_path' => env('DIGITALOCEAN_SPACES_ROOT_PATH'),
             'expiration' => env('DIGITALOCEAN_SPACES_EXPIRATION'),
         ],
+
+        'azure' => [
+            'driver'    => 'azure',
+            'name'      => env('AZURE_STORAGE_NAME'),
+            'key'       => env('AZURE_STORAGE_KEY'),
+            'container' => env('AZURE_STORAGE_CONTAINER'),
+            'url'       => env('AZURE_STORAGE_URL'), // Optional
+        ],
+
+        'azure_sas' => [ // use this when SAS TOKEN is given.
+            'driver'    => 'azure_sas',
+            'name'      => env('AZURE_STORAGE_NAME'),
+            'container' => env('AZURE_STORAGE_CONTAINER'),
+            'sas_token' => env('AZURE_SAS_TOKEN'),
+            'url'       => env('AZURE_STORAGE_URL'), // optional
+        ],
     ],
 
     /*

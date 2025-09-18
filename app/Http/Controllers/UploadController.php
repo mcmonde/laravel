@@ -16,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 
 class UploadController extends Controller
 {
-//    protected UploadRepository $UploadRepository;
+    protected UploadRepository $UploadRepository;
     protected array $selected_relation_columns_only = [
 //            "suppliers_encoded_by_foreign" => ['id', 'first_name', 'middle_name', 'last_name', 'email']
         ];
@@ -24,10 +24,10 @@ class UploadController extends Controller
 //            ['text' => 'Supplier', 'value' => 'suppliers_name', 'align' => 'left', 'sortable' => false],
         ];
 
-//    public function __construct(UploadRepository $UploadRepository)
-//    {
-//        $this->UploadRepository = $UploadRepository;
-//    }
+    public function __construct(UploadRepository $UploadRepository)
+    {
+        $this->UploadRepository = $UploadRepository;
+    }
 
     public function index(Index $request): JsonResponse
     {

@@ -31,13 +31,18 @@ return new class extends Migration
             // Disk and path
             $table->string('disk')->default('local'); // e.g. local, s3, do_spaces, azure
             $table->string('path'); // path relative to the disk
-            $table->string('url')->nullable(); // cached URL (optional, for performance)
+            $table->text('url')->nullable(); // cached URL (optional, for performance)
 
             // Optional metadata
             $table->json('meta')->nullable(); // e.g. thumbnails, processing info
 
             $table->timestamps();
             $table->softDeletes();
+
+            // Optimization indexes
+//            $table->index(['uploadable_type', 'uploadable_id']);
+            $table->index('type');
+            $table->index('disk');
         });
     }
 

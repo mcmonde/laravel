@@ -38,7 +38,6 @@ class DatabaseStructureCacheService
         $foreignKeys = $this->getForeignKeys();
 
         $structure = [];
-        $tables = ['documents'];
         foreach ($tables as $table) {
             $structure[$table] = [
                 'columns' => $this->getColumns($table),

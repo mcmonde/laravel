@@ -2,66 +2,80 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class DatabaseSchemaCacheService
 {
-    protected string $cachePrefix;
-    protected string $driver;
+    protected string $defaultPrefix;
+    protected string $defaultDriver;
+    protected string $defaultConnection;
+    protected array $driverCache = [];
+    protected array $prefixCache = [];
+    protected array $visitedConstraints = [];
 
     public function __construct()
     {
-        $this->driver = DB::getDriverName();
-        $this->cachePrefix = env('CACHE_PREFIX', 'db_schema_');
+        $this->defaultPrefix = config('cache.prefix', 'db_schema_');
+        $this->defaultConnection = config('database.default');
+        $this->defaultDriver = config("database.connections.{$this->defaultConnection}.driver", 'mysql');
+
+        $this->driverCache[$this->defaultConnection] = $this->defaultDriver;
+        $this->prefixCache[$this->defaultConnection] = $this->buildPrefix($this->defaultConnection);
     }
 
-    /**
-     * Get the full database structure from cache (or build it if not cached).
-     */
-    public function getTableStructure($table): array
+    public function getDriver(?string $connection = null): string
     {
-        return [
-            'has_foreign_keys' => cache()->get($this->cachePrefix.$table.'_structure'),
-            'belongs_to_foreign_keys' => $this->getReferencedBy($table),
-        ];
-    }
+        $connection = $connection ?? $this->defaultConnection;
 
-    /**
-     * Forget and rebuild the cache.
-     */
-    public function refresh(): array
-    {
-        Cache::forget($this->cachePrefix);
-        return $this->get();
-    }
-
-    /**
-     * Build the database structure (tables, columns, relations, sub-relations).
-     */
-    public function buildTableStructure(): void
-    {
-        $tables = $this->getTables();
-        $foreignKeys = $this->getForeignKeys();
-
-        foreach ($tables as $table) {
-            cache()->rememberForever($this->cachePrefix.$table.'_structure', function () use ($table, $foreignKeys) {
-                return [
-                    $table => $this->getColumns($table),
-                    'relations' => $this->getRelationsRecursive($table, $foreignKeys),
-                ];
-            });
+        if (isset($this->driverCache[$connection])) {
+            return $this->driverCache[$connection];
         }
+
+        return $this->driverCache[$connection] =
+            config("database.connections.$connection.driver", $this->defaultDriver);
     }
 
-    /**
-     * Get all tables in the database.
-     */
+    public function getCachePrefix(?string $connection = null): string
+    {
+        $connection = $connection ?? $this->defaultConnection;
+
+        if (isset($this->prefixCache[$connection])) {
+            return $this->prefixCache[$connection];
+        }
+
+        return $this->prefixCache[$connection] = $this->buildPrefix($connection);
+    }
+
+    protected function buildPrefix(string $connection): string
+    {
+        $customPrefix = config("database.connections.$connection.cache_prefix");
+
+        if ($customPrefix) {
+            return $customPrefix;
+        }
+
+        return $this->defaultPrefix . $connection . '_';
+    }
+
+    public function refresh(): void
+    {
+        foreach ($this->getTables() as $table) {
+            cache()->forget($this->getCachePrefix().$table.'_columns');
+            cache()->forget($this->getCachePrefix().$table.'_column_types');
+            cache()->forget($this->getCachePrefix().$table.'_structure');
+        }
+
+        cache()->forget($this->getCachePrefix().'tables');
+        cache()->forget($this->getCachePrefix().'foreign_keys');
+
+        $this->buildTableStructure();
+    }
+
     public function getTables(): array
     {
-        return cache()->rememberForever($this->cachePrefix."tables", function () {
-            $driver = $this->driver;
+        return cache()->rememberForever($this->getCachePrefix()."tables", function () {
+            $driver = $this->getDriver();
 
             if ($driver === 'mysql') {
                 $results = DB::select('SHOW TABLES');
@@ -77,30 +91,41 @@ class DatabaseSchemaCacheService
 
             if ($driver === 'sqlite') {
                 $results = DB::select("SELECT name FROM sqlite_master WHERE type='table'");
-                return array_map(fn($row) => $row->tablename, $results);
+                return array_map(fn($row) => $row->name, $results);
             }
 
             throw new \RuntimeException("Unsupported driver: {$driver}");
         });
     }
 
-    /**
-     * Get all columns for a table.
-     */
     public function getColumns(string $table): array
     {
-        return cache()->rememberForever($this->cachePrefix.$table.'_columns', function () use ($table) {
+        return cache()->rememberForever($this->getCachePrefix().$table.'_columns', function () use ($table) {
             return Schema::getColumnListing($table);
         });
     }
 
-    /**
-     * Get all foreign key relationships.
-     */
+    public function getColumnTypes(string $table): array
+    {
+        return cache()->rememberForever($this->getCachePrefix().$table.'_column_types', function () use ($table) {
+            $types = [];
+            foreach ($this->getColumns($table) as $col) {
+                $types[$col] = Schema::getColumnType($table, $col);
+            }
+            return $types;
+        });
+    }
+
+    public function isSoftDeletable(string $table): bool
+    {
+        $columns = $this->getColumns($table);
+        return in_array('deleted_at', $columns, true);
+    }
+
     public function getForeignKeys(): array
     {
-        return cache()->rememberForever($this->cachePrefix.'foreign_keys', function () {
-            $driver = $this->driver;
+        return cache()->rememberForever($this->getCachePrefix().'foreign_keys', function () {
+            $driver = $this->getDriver();
 
             if ($driver === 'mysql') {
                 $results = DB::select("
@@ -115,7 +140,6 @@ class DatabaseSchemaCacheService
                       AND kcu.CONSTRAINT_SCHEMA = DATABASE()
                 ");
 
-                // Normalize keys
                 return array_map(function ($row) {
                     return [
                         'constraint_name' => $row->CONSTRAINT_NAME,
@@ -128,6 +152,7 @@ class DatabaseSchemaCacheService
             }
 
             if ($driver === 'pgsql') {
+
                 $results = DB::select("
                     SELECT
                         tc.constraint_name,
@@ -143,8 +168,6 @@ class DatabaseSchemaCacheService
                         ON ccu.constraint_name = tc.constraint_name
                     WHERE constraint_type = 'FOREIGN KEY'
                 ");
-
-                // Already lowercase, just return
                 return array_map(function ($row) {
                     return [
                         'constraint_name' => $row->constraint_name,
@@ -160,56 +183,173 @@ class DatabaseSchemaCacheService
         });
     }
 
-    public function getReferencedBy(string $table): array
+    public function buildTableStructure(): void
     {
+        $tables = $this->getTables();
+        $this->getForeignKeys();
+
+        foreach ($tables as $table) {
+            $this->getColumns($table);
+            $this->getColumnTypes($table);
+        }
+    }
+
+    public function traverseTableBFS(string $table, ?int $maxDepth = null, int $maxNodes = 10000, int $maxMemoryMB = 128, ?string $direction = null): array
+    {
+
         $foreignKeys = $this->getForeignKeys();
-        $referencedTables = [];
-        foreach ($foreignKeys as $foreignKey) {
-            if ($foreignKey['referenced_table_name'] === $table) {
-                $referencedTables[] = $foreignKey;
+        //start with the base table
+        $results[$table] = [
+            'type'              => 'base',
+//                        'table'             => $fk['table_name'],
+//                        'column'            => $fk['column_name'],
+//                        'referenced_table'  => $fk['referenced_table_name'],
+//                        'referenced_column' => $fk['referenced_column_name'],
+            'columns'           => $this->getColumns($table),
+            'depth' => 0,
+            'children' => []
+        ];
+
+        $queue = [
+            [
+                'table'     => $table,
+                'depth'     => 1,
+                'parentKey' => null,
+            ]
+        ];
+
+        $nodesProcessed = 0;
+        $aborted = false;
+        $abortReason = null;
+
+        while (!empty($queue)) {
+            $current = array_shift($queue);
+            $currentTable = $current['table'];
+            $depth = $current['depth'];
+
+            // ✅ Safeguards
+            if (++$nodesProcessed > $maxNodes) {
+                $aborted = true;
+                $abortReason = "Traversal aborted: exceeded maxNodes ($maxNodes).";
+                break;
+            }
+
+            if (memory_get_usage(true) / 1024 / 1024 > $maxMemoryMB) {
+                $aborted = true;
+                $abortReason = "Traversal aborted: exceeded memory limit of {$maxMemoryMB}MB.";
+                break;
+            }
+
+            // Stop if maxDepth reached
+            if ($maxDepth !== null && $depth > $maxDepth) {
+                continue;
+            }
+
+            foreach ($foreignKeys as $fk) {
+                // ✅ Forward FK (table → referenced_table)
+                if (($direction === null || $direction === 'forward')
+                    && $fk['table_name'] === $currentTable
+                    && !in_array($fk['constraint_name'], $this->visitedConstraints)) {
+
+                    $this->visitedConstraints[] = $fk['constraint_name'];
+
+                    $node = [
+                        'type'              => 'forward',
+//                        'table'             => $fk['table_name'],
+//                        'column'            => $fk['column_name'],
+//                        'referenced_table'  => $fk['referenced_table_name'],
+//                        'referenced_column' => $fk['referenced_column_name'],
+                        'columns'           => $this->getColumns($fk['referenced_table_name']),
+                        'depth' => $depth,
+                        'children' => []
+                    ];
+
+//                    if ($maxDepth !== 0) {
+//                        $node['depth'] = $depth;
+//                        $node['children'] = [];
+//                    }
+
+                    $this->attachNode($results, $current['parentKey'], $fk['constraint_name'], $node);
+
+                    $queue[] = [
+                        'table'     => $fk['referenced_table_name'],
+                        'depth'     => $depth + 1,
+                        'parentKey' => $fk['constraint_name'],
+                    ];
+                }
+
+                // ✅ Reverse FK (referenced_table ← table)
+                if (($direction === null || $direction === 'reverse')
+                    && $fk['referenced_table_name'] === $currentTable
+                    && !in_array($fk['constraint_name'], $this->visitedConstraints)) {
+
+                    $this->visitedConstraints[] = $fk['constraint_name'];
+
+                    $node = [
+                        'type'              => 'reverse',
+//                        'table'             => $fk['table_name'],
+//                        'column'            => $fk['column_name'],
+//                        'referenced_table'  => $fk['referenced_table_name'],
+//                        'referenced_column' => $fk['referenced_column_name'],
+                        'columns'           => $this->getColumns($fk['table_name']),
+                        'depth' => $depth,
+                        'children' => []
+                    ];
+
+//                    if ($maxDepth !== 0) {
+//                        $node['depth'] = $depth;
+//                        $node['children'] = [];
+//                    }
+
+                    $this->attachNode($results, $current['parentKey'], $fk['constraint_name'], $node);
+
+                    $queue[] = [
+                        'table'     => $fk['table_name'],
+                        'depth'     => $depth + 1,
+                        'parentKey' => $fk['constraint_name'],
+                    ];
+                }
             }
         }
 
-        $referencedStructures = [];
-        foreach ($referencedTables as $referencedTable) {
-            $referencedStructures[] = cache()->get($this->cachePrefix.$referencedTable['table_name'].'_structure');
+        // ✅ Add meta only if traversal was aborted
+        if ($aborted) {
+            $results['_meta'] = [
+                'status' => 'aborted',
+                'reason' => $abortReason,
+                'processed_nodes' => $nodesProcessed,
+//                'memory_usage_bytes' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                'memory_usage_bytes' => memory_get_usage(true),
+            ];
         }
 
-        return $referencedStructures;
+        return $results;
     }
 
     /**
-     * Recursively build relations for a given table.
+     * Helper to attach a node to the tree by parentKey.
      */
-    protected function getRelationsRecursive(string $table, array $map, array &$visited = []): array
+    protected function attachNode(array &$results, ?string $parentKey, string $constraintName, array $node): void
     {
-        // If we already fully resolved this table, return it
-        if (isset($visited[$table])) {
-            return $visited[$table];
+        if ($parentKey === null) {
+            $results[$constraintName] = $node;
+            return;
         }
 
-        // Mark as "in progress" to prevent infinite recursion
-        $visited[$table] = [];
-
-        $relations = [];
-        foreach ($map as $relation) {
-            if ($relation['table_name'] === $table) {
-                $relations[] = [
-//                    'local_column'   => $relation['column_name'],
-//                    'foreign_table'  => $relation['referenced_table_name'],
-//                    'foreign_column' => $relation['referenced_column_name'],
-//                    'constraint_name' => $relation['constraint_name'],
-                    $relation['constraint_name'] => $this->getColumns($relation['referenced_table_name']),
-                    'relations'  => $this->getRelationsRecursive(
-                        $relation['referenced_table_name'],
-                        $map,
-                        $visited
-                    ),
-                ];
+        $iterator = function (&$arr) use (&$iterator, $parentKey, $constraintName, $node) {
+            foreach ($arr as $key => &$value) {
+                if ($key === $parentKey) {
+                    $value['children'][$constraintName] = $node;
+                    return true;
+                }
+                if (!empty($value['children']) && $iterator($value['children'])) {
+                    return true;
+                }
             }
-        }
+            return false;
+        };
 
-        // Save the resolved relations
-        return $visited[$table] = $relations;
+        $iterator($results);
     }
+
 }

@@ -15,6 +15,7 @@ class StorageType extends Model
     use HasFactory, SoftDeletes, RevisionableTrait;
 
     protected $fillable = [];
+    protected $casts = ['config' => 'array'];
     protected $revisionEnabled = true;
     protected $revisionCreationsEnabled = true;
 

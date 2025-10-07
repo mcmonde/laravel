@@ -13,26 +13,20 @@ return new class extends Migration
     {
         Schema::create('uploads', function (Blueprint $table) {
             $table->id();
-
             // Polymorphic relation (model that "owns" the file)
             $table->morphs('uploadable'); // creates uploadable_id and uploadable_type
-
             // Upload categorization
-            $table->string('type')->nullable();
-            // e.g. avatar, document, attachment, banner, gallery, etc.
-
+            $table->foreignId('storage_type_id')->nullable()->constrained('storage_types')->cascadeOnDelete();
+            $table->foreignId('upload_category_id')->nullable()->constrained('upload_categories')->cascadeOnDelete();
             // File details
+            $table->string('filename');      // hashed or UUID filename
             $table->string('original_name');    // e.g. user_uploaded_file.pdf
-            $table->string('stored_name');      // hashed or UUID filename
-            $table->string('extension')->nullable();
-            $table->unsignedBigInteger('size')->nullable(); // in bytes
             $table->string('mime_type')->nullable();
-
+            $table->unsignedBigInteger('size')->nullable(); // in bytes
+            $table->string('extension')->nullable();
             // Disk and path
-            $table->string('disk')->default('local'); // e.g. local, s3, do_spaces, azure
             $table->string('path'); // path relative to the disk
             $table->text('url')->nullable(); // cached URL (optional, for performance)
-
             // Optional metadata
             $table->json('meta')->nullable(); // e.g. thumbnails, processing info
 

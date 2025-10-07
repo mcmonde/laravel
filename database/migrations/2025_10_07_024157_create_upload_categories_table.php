@@ -11,15 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('storage_types', function (Blueprint $table) {
+        Schema::create('upload_categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique(); // e.g. 'local', 'local-dist', 'DOspace', 'Azure'
-            $table->string('driver')->nullable(); // e.g. 'local', 's3', 'azure'
-            $table->json('config')->nullable(); // optional: endpoint, bucket, region, etc.
+            $table->string('name')->unique(); // e.g. 'avatar', 'document', 'invoice', 'banner'
+            $table->string('description')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
-
     }
 
     /**
@@ -27,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('storage_types');
+        Schema::dropIfExists('upload_categories');
     }
 };

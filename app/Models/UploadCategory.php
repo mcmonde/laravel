@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -33,5 +34,10 @@ class UploadCategory extends Model
         }
 
         $this->fillable = $columns;
+    }
+
+    public function uploads(): HasMany
+    {
+        return $this->hasMany(Upload::class);
     }
 }

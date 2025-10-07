@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use PhpOffice\PhpSpreadsheet\Calculation\Category;
 use Venturecraft\Revisionable\RevisionableTrait;
 
 class Upload extends Model
@@ -39,9 +43,19 @@ class Upload extends Model
         'meta' => 'array',
     ];
 
-    public function uploadable()
+    public function uploadable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function storage(): BelongsTo
+    {
+        return $this->belongsTo(StorageType::class, 'storage_type_id', 'id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(UploadCategory::class, 'upload_category_id', 'id');
     }
 
     public function getFullUrlAttribute(): string

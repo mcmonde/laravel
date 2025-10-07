@@ -39,10 +39,6 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            // Optimization indexes
-//            $table->index(['uploadable_type', 'uploadable_id']);
-            $table->index('type');
-            $table->index('disk');
         });
     }
 

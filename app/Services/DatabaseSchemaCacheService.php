@@ -352,4 +352,29 @@ class DatabaseSchemaCacheService
         $iterator($results);
     }
 
+    public function getForward(string $table): array
+    {
+        $results = [];
+        $foreignKeys = $this->getForeignKeys();
+        foreach ($foreignKeys as $fk) {
+            if ($fk['table_name'] === $table) {
+                $results[] = $fk;
+            }
+        }
+
+        return $results;
+    }
+
+    public function getReverse(string $table): array
+    {
+        $results = [];
+        $foreignKeys = $this->getForeignKeys();
+        foreach ($foreignKeys as $fk) {
+            if ($fk['referenced_table_name'] === $table) {
+                $results[] = $fk;
+            }
+        }
+
+        return $results;
+    }
 }

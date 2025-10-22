@@ -69,6 +69,9 @@ class DatabaseSchemaCacheService
         cache()->forget($this->getCachePrefix().'tables');
         cache()->forget($this->getCachePrefix().'foreign_keys');
 
+        if (app()->runningInConsole()) {
+            echo '⚙️  Rebuilding database cache schema...' . PHP_EOL;
+        }
         $this->buildTableStructure();
     }
 
@@ -189,8 +192,12 @@ class DatabaseSchemaCacheService
         $this->getForeignKeys();
 
         foreach ($tables as $table) {
-            $this->getColumns($table);
+            $columns = $this->getColumns($table);
             $this->getColumnTypes($table);
+
+            if (app()->runningInConsole()) {
+                echo "     "."\033[32m" . $table . "\033[0m" . '     [' . implode(', ', $columns) . '] ' . PHP_EOL;
+            }
         }
     }
 

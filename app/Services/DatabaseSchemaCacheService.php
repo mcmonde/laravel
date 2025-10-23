@@ -88,10 +88,10 @@ class DatabaseSchemaCacheService
             }
 
             if ($driver === 'pgsql') {
-                $results = DB::select("SELECT tablename FROM pg_tables WHERE schemaname='public'");
+                $schema = config("database.connections.$this->defaultConnection.schema", 'public');
+                $results = DB::select("SELECT tablename FROM pg_tables WHERE schemaname = ?", [$schema]);
                 return array_map(fn($row) => $row->tablename, $results);
             }
-
             if ($driver === 'sqlite') {
                 $results = DB::select("SELECT name FROM sqlite_master WHERE type='table'");
                 return array_map(fn($row) => $row->name, $results);
@@ -182,6 +182,24 @@ class DatabaseSchemaCacheService
                 }, $results);
             }
 
+            if ($driver === 'sqlite') {
+                $tables = $this->getTables();
+                $foreignKeys = [];
+                foreach ($tables as $table) {
+                    $results = DB::select("PRAGMA foreign_key_list('$table')");
+                    foreach ($results as $row) {
+                        $foreignKeys[] = [
+                            'constraint_name' => "fk_{$table}_{$row->id}",
+                            'table_name' => $table,
+                            'column_name' => $row->from,
+                            'referenced_table_name' => $row->table,
+                            'referenced_column_name' => $row->to,
+                        ];
+                    }
+                }
+                return $foreignKeys;
+            }
+
             throw new \RuntimeException("Unsupported driver: {$driver}");
         });
     }
@@ -190,13 +208,18 @@ class DatabaseSchemaCacheService
     {
         $tables = $this->getTables();
         $this->getForeignKeys();
+        $total = count($tables);
 
-        foreach ($tables as $table) {
+        if (app()->runningInConsole()) {
+            echo "Processing $total tables..." . PHP_EOL;
+        }
+
+        foreach ($tables as $index => $table) {
             $columns = $this->getColumns($table);
             $this->getColumnTypes($table);
 
             if (app()->runningInConsole()) {
-                echo "     "."\033[32m" . $table . "\033[0m" . '     [' . implode(', ', $columns) . '] ' . PHP_EOL;
+                echo "     \033[32m (" . ($index + 1) . "/$total) $table\033[0m [" . implode(', ', $columns) . "] " . PHP_EOL;
             }
         }
     }

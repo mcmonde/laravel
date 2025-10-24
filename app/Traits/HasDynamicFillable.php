@@ -4,57 +4,102 @@ namespace App\Traits;
 
 use App\Services\DatabaseSchemaCacheService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 trait HasDynamicFillable
 {
     protected static array $cachedFillableColumns = [];
-
+    protected static array $dynamicRelations = [];
+    protected static array $tableModelMapCache = [];
     protected array $excludeColumnTypes = [
         'json',
         'geometry',
     ];
 
-    public static function bootHasDynamicFillable(): void
+    public static function bootHasDynamicRelations(): void
     {
         $class = static::class;
-
-        if (isset(static::$cachedFillableColumns[$class])) {
-            return; // Already booted for this class
+        if (isset(static::$dynamicRelations[$class])) {
+            return;
         }
+
+        $instance = new static;
+        $table = $instance->getTable();
+        $schema = app(DatabaseSchemaCacheService::class);
+
+        // --- Load the global table-to-model map ONCE ---
+        if (empty(static::$tableModelMapCache)) {
+            static::$tableModelMapCache = $schema->getModelTableMap();
+        }
+
+        $relations = [];
 
         try {
-            $schema = app(DatabaseSchemaCacheService::class);
-            $instance = new static; // Get an instance to read model properties
-            $table = $instance->getTable();
+            // --- 1. Process Forward Relations (belongsTo) ---
+            $forwardKeys = $schema->getForward($table);
+            foreach ($forwardKeys as $fk) {
+                $relationName = Str::camel(Str::beforeLast($fk['column_name'], '_id'));
 
-            $allColumns = $schema->getColumns($table);
-            $types = $schema->getColumnTypes($table);
+                // Use the new helper to find the model class
+                $relatedModel = $instance->findModelClass($fk['referenced_table_name']);
 
-            // 1. Get the model's defined $guarded list
-            $guarded = $instance->getGuarded();
-
-            // 2. Add soft-delete column to guarded list automatically
-            if ($schema->isSoftDeletable($table)) {
-                $guarded[] = 'deleted_at';
+                if ($relatedModel && !method_exists($instance, $relationName)) {
+                    $relations[$relationName] = [
+                        'type'        => 'belongsTo',
+                        'model'       => $relatedModel,
+                        'foreign_key' => $fk['column_name'],
+                        'local_key'   => $fk['referenced_column_name'],
+                    ];
+                }
             }
 
-            // 3. Get the types to exclude (from this trait or the model)
-            $nonFillableTypes = $instance->excludeColumnTypes;
+            // --- 2. Process Reverse Relations (hasMany) ---
+            $reverseKeys = $schema->getReverse($table);
+            $modelNameSingular = Str::singular(Str::studly($table));
+            $standardFkName = Str::snake($modelNameSingular) . '_id';
 
-            // 4. Start with all columns and filter them down
-            static::$cachedFillableColumns[$class] = collect($allColumns)
-                // Filter out columns that are in the guarded list
-                ->reject(fn ($column) => in_array($column, $guarded))
-                // Filter out columns that match the non-fillable types
-                ->reject(fn ($column) => in_array($types[$column] ?? '', $nonFillableTypes))
-                ->values()
-                ->all();
+            foreach ($reverseKeys as $fk) {
+                // Use the new helper here too
+                $relatedModel = $instance->findModelClass($fk['table_name']);
+                if (!$relatedModel) {
+                    continue;
+                }
+
+                // ... (rest of the reverse relation logic is unchanged) ...
+                $relationName = '';
+                if ($fk['column_name'] === $standardFkName) {
+                    $relationName = Str::camel(Str::plural($fk['table_name']));
+                } else {
+                    $prefix = Str::camel(Str::beforeLast($fk['column_name'], '_id'));
+                    $suffix = Str::plural(Str::studly($fk['table_name']));
+                    $relationName = $prefix . $suffix;
+                }
+
+                if ($relationName && !method_exists($instance, $relationName)) {
+                    $relations[$relationName] = [
+                        'type'        => 'hasMany',
+                        'model'       => $relatedModel,
+                        'foreign_key' => $fk['column_name'],
+                        'local_key'   => $fk['referenced_column_name'],
+                    ];
+                }
+            }
 
         } catch (\Throwable $e) {
-            // Failsafe: This can happen if table doesn't exist yet
-            Log::warning("Could not build dynamic fillable for $class: " . $e->getMessage());
-            static::$cachedFillableColumns[$class] = [];
+            Log::warning("Could not build dynamic relations for $class: " . $e->getMessage());
         }
+
+        static::$dynamicRelations[$class] = $relations;
+    }
+
+    /**
+     * Helper to find a model class name from a table name
+     * using the dynamically built map.
+     */
+    protected function findModelClass(string $tableName): ?string
+    {
+        // Check the static, in-memory cache
+        return static::$tableModelMapCache[$tableName] ?? null;
     }
 
     /**

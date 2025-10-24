@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class DatabaseSchemaCacheService
 {
@@ -12,6 +15,7 @@ class DatabaseSchemaCacheService
     protected string $defaultConnection;
     protected array $driverCache = [];
     protected array $prefixCache = [];
+    protected const MAP_CACHE_KEY = 'model_table_map';
 
     public function __construct()
     {
@@ -59,6 +63,7 @@ class DatabaseSchemaCacheService
 
     public function refresh(): void
     {
+        // Get old tables from cache *before* forgetting
         $oldTables = $this->getTables();
 
         foreach ($oldTables as $table) {
@@ -71,13 +76,17 @@ class DatabaseSchemaCacheService
         cache()->forget($this->getCachePrefix().'tables');
         cache()->forget($this->getCachePrefix().'foreign_keys');
 
+        // --- Forget the new model map cache ---
+        cache()->forget($this->getCachePrefix() . self::MAP_CACHE_KEY);
+
         if (app()->runningInConsole()) {
             echo '⚙️  Rebuilding database cache schema...' . PHP_EOL;
         }
 
+        // This will now re-cache tables, FKs, and the model map
         $this->buildTableStructure();
+        $this->getModelTableMap(); // <-- Re-cache the map
     }
-
     public function getTables(): array
     {
         return cache()->rememberForever($this->getCachePrefix()."tables", function () {
@@ -225,6 +234,62 @@ class DatabaseSchemaCacheService
                 echo "     \033[32m (" . ($index + 1) . "/$total) $table\033[0m [" . implode(', ', $columns) . "] " . PHP_EOL;
             }
         }
+    }
+
+    public function getModelTableMap(): array
+    {
+        return cache()->rememberForever($this->getCachePrefix() . self::MAP_CACHE_KEY, function () {
+            if (app()->runningInConsole()) {
+                echo '   -> Building model-to-table map...' . PHP_EOL;
+            }
+            return $this->buildModelTableMap();
+        });
+    }
+
+    /**
+     * Scans the app/Models directory to build the map.
+     */
+    protected function buildModelTableMap(): array
+    {
+        $map = [];
+        $modelPath = app_path('Models');
+
+        if (!File::exists($modelPath)) {
+            return [];
+        }
+
+        $files = File::allFiles($modelPath);
+        $appNamespace = app()->getNamespace(); // Typically "App\"
+
+        foreach ($files as $file) {
+            // Create the class name from the file path
+            $class = $appNamespace . str_replace(
+                    ['/', '.php'],
+                    ['\\', ''],
+                    Str::after($file->getRealPath(), app_path() . DIRECTORY_SEPARATOR)
+                );
+
+            try {
+                if (!class_exists($class)) {
+                    continue;
+                }
+
+                $reflection = new \ReflectionClass($class);
+
+                // Check if it's a valid, instantiable Eloquent model
+                if ($reflection->isSubclassOf(Model::class) && !$reflection->isAbstract()) {
+                    $model = new $class;
+                    $table = $model->getTable();
+
+                    // Add to our map
+                    $map[$table] = $class;
+                }
+            } catch (\Throwable $e) {
+                // Ignore files that aren't valid classes
+            }
+        }
+
+        return $map;
     }
 
     public function getForward(string $table): array

@@ -12,7 +12,6 @@ class DatabaseSchemaCacheService
     protected string $defaultConnection;
     protected array $driverCache = [];
     protected array $prefixCache = [];
-    protected array $visitedConstraints = [];
 
     public function __construct()
     {
@@ -60,10 +59,13 @@ class DatabaseSchemaCacheService
 
     public function refresh(): void
     {
-        foreach ($this->getTables() as $table) {
+        $oldTables = $this->getTables();
+
+        foreach ($oldTables as $table) {
             cache()->forget($this->getCachePrefix().$table.'_columns');
             cache()->forget($this->getCachePrefix().$table.'_column_types');
-            cache()->forget($this->getCachePrefix().$table.'_structure');
+            cache()->forget($this->getCachePrefix().$table.'_forward_keys');
+            cache()->forget($this->getCachePrefix().$table.'_reverse_keys');
         }
 
         cache()->forget($this->getCachePrefix().'tables');
@@ -72,6 +74,7 @@ class DatabaseSchemaCacheService
         if (app()->runningInConsole()) {
             echo '⚙️  Rebuilding database cache schema...' . PHP_EOL;
         }
+
         $this->buildTableStructure();
     }
 
@@ -226,27 +229,31 @@ class DatabaseSchemaCacheService
 
     public function getForward(string $table): array
     {
-        $results = [];
-        $foreignKeys = $this->getForeignKeys();
-        foreach ($foreignKeys as $fk) {
-            if ($fk['table_name'] === $table) {
-                $results[] = $fk;
+        return cache()->rememberForever($this->getCachePrefix().$table.'_forward_keys', function () use ($table) {
+            $results = [];
+            $foreignKeys = $this->getForeignKeys(); // Gets from global FK cache
+            foreach ($foreignKeys as $fk) {
+                if ($fk['table_name'] === $table) {
+                    $results[] = $fk;
+                }
             }
-        }
 
-        return $results;
+            return $results;
+        });
     }
 
     public function getReverse(string $table): array
     {
-        $results = [];
-        $foreignKeys = $this->getForeignKeys();
-        foreach ($foreignKeys as $fk) {
-            if ($fk['referenced_table_name'] === $table) {
-                $results[] = $fk;
+        return cache()->rememberForever($this->getCachePrefix().$table.'_reverse_keys', function () use ($table) {
+            $results = [];
+            $foreignKeys = $this->getForeignKeys(); // Gets from global FK cache
+            foreach ($foreignKeys as $fk) {
+                if ($fk['referenced_table_name'] === $table) {
+                    $results[] = $fk;
+                }
             }
-        }
 
-        return $results;
+            return $results;
+        });
     }
 }

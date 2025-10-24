@@ -141,4 +141,13 @@ trait HasDynamicRelations
             default => null,
         };
     }
+
+    public function getDynamicRelations(): array
+    {
+        // Ensures the boot method has run and populated the cache
+        static::bootHasDynamicRelations();
+
+        // Return the cached relations for this specific class
+        return static::$dynamicRelations[static::class] ?? [];
+    }
 }

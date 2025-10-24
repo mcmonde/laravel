@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasDynamicFillable;
+use App\Traits\HasDynamicRelations;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -19,6 +20,7 @@ class User extends Authenticatable implements MustVerifyEmail
         HasApiTokens,
         HasRolesAndAbilities,
         HasDynamicFillable,
+        HasDynamicRelations,
         SoftDeletes;
 
     protected $guarded = ['id', 'created_at', 'updated_at'];

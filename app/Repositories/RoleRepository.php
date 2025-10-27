@@ -4,7 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Ability;
 use App\Models\Role;
-use App\Traits\QueryGenerator;
+use App\Traits\HasRepositoryCrud;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +12,7 @@ use Bouncer;
 
 class RoleRepository
 {
-    use QueryGenerator;
+    use HasRepositoryCrud;
 
     protected Role $model;
 

@@ -3,11 +3,11 @@
 namespace App\Repositories;
 
 use App\Models\Log;
-use App\Traits\QueryGenerator;
+use App\Traits\HasRepositoryCrud;
 
 class LogRepository
 {
-    use QueryGenerator;
+    use HasRepositoryCrud;
 
     protected Log $model;
 

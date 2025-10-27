@@ -4,7 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Role;
 use App\Models\User;
-use App\Traits\QueryGenerator;
+use App\Traits\HasRepositoryCrud;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -12,7 +12,7 @@ use Bouncer;
 
 class UserRepository
 {
-    use QueryGenerator;
+    use HasRepositoryCrud;
 
     protected User $model;
 

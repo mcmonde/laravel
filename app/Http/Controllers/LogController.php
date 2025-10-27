@@ -16,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 
 class LogController extends Controller
 {
-    protected LogRepository $LogRepository;
+    protected LogRepository $repository;
     protected array $selected_relation_columns_only = [
 //            "suppliers_encoded_by_foreign" => ['id', 'first_name', 'middle_name', 'last_name', 'email']
         ];
@@ -24,65 +24,65 @@ class LogController extends Controller
 //            ['text' => 'Supplier', 'value' => 'suppliers_name', 'align' => 'left', 'sortable' => false],
         ];
 
-    public function __construct(LogRepository $LogRepository)
+    public function __construct(LogRepository $repository)
     {
-        $this->LogRepository = $LogRepository;
+        $this->repository = $repository;
     }
 
     public function index(Index $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->LogRepository->index($payload, $this->selected_relation_columns_only, $this->headers);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->index($payload, $this->selected_relation_columns_only, $this->headers);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function create(Create $request): JsonResponse
     {
-        $data = $this->LogRepository->create();
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->create();
+        return $this->repository->getJsonResponse($data);
     }
 
     public function store(Store $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->LogRepository->store($payload, $this->selected_relation_columns_only, $this->headers);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->store($payload, $this->selected_relation_columns_only, $this->headers);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function show(Show $request, $id): JsonResponse
     {
-        $data = $this->LogRepository->show($id, $this->selected_relation_columns_only);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->show($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function edit(Edit $request, $id): JsonResponse
     {
-        $data = $this->LogRepository->edit($id, $this->selected_relation_columns_only);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->edit($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function update(Update $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->LogRepository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function destroy(Destroy $request, $id): JsonResponse
     {
-        $data = $this->LogRepository->destroy($id, $this->selected_relation_columns_only);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->destroy($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function forceDelete(ForceDelete $request, $id): JsonResponse
     {
-        $data = $this->LogRepository->forceDelete($id, $this->selected_relation_columns_only);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->forceDelete($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function restore(Restore $request, $id): JsonResponse
     {
-        $data = $this->LogRepository->restore($id, $this->selected_relation_columns_only);
-        return $this->LogRepository->getJsonResponse($data);
+        $data = $this->repository->restore($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 }

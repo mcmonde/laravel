@@ -47,19 +47,11 @@ Route::group(['middleware' => ["auth:sanctum", 'log.route']], function () {
 
                     // if the model uses soft-deletes enable these routes.
                     if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses('App\\Models\\' . $name_case))) {
-                        Route::delete($controller['slug'] . '/delete/{' . $controller['name'] . '}', 'destroy')->name($controller['slug'] . '.destroy');
+                        Route::delete($controller['slug'] . '/sotf-delete/{' . $controller['name'] . '}', 'softDelete')->name($controller['slug'] . '.destroy');
 
-                        // DEPRICATED. NO LONGER IN USE UNLESS ITS REALLY NECESSARY.
-                        // Route::post($controller['slug'] . '/{' . $controller['name'] . '}' . '/restore', 'restore')->name($controller['slug'] . '.restore');
-                        // Route::delete($controller['slug'] . '/force-delete/{' . $controller['name'] . '}', 'forceDelete')->name($controller['slug'] . '.force-delete');
+                        Route::post($controller['slug'] . '/{' . $controller['name'] . '}' . '/restore', 'restore')->name($controller['slug'] . '.restore');
+                        Route::delete($controller['slug'] . '/permanent-delete/{' . $controller['name'] . '}', 'permanentDelete')->name($controller['slug'] . '.force-delete');
                     }
-
-                    /*  TODO NEED TO RE-ASSIST THIS ROUTE SINCE NOT ALL CONTROLLERS NEED UPLOAD.
-                        for now this is just temporary.
-                    */
-                    Route::post($controller['slug'] . '/upload', 'upload')->name($controller['slug'] . '.upload');
-                    // disabled at the moment
-                    // Route::match((['GET','POST']), $controller['slug'].'/export'.'/{'.$controller['name'].'}', 'export')->name($controller['slug'].'.export');
                 });
             }
         }

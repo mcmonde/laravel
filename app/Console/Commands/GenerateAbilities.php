@@ -39,20 +39,20 @@ class GenerateAbilities extends Command
         Bouncer::allow('super-admin')->everything();
 
         User::updateOrCreate([
-            'email' =>env('FIRST_USER_EMAIL','super.admin@bac.com')
+            'email'             =>config('account.email','admin@admin.com'),
         ], [
-            'first_name' => env('FIRST_USER_FIRST_NAME','Super '),
-            'middle_name' => env('FIRST_USER_MIDDLE_NAME','Duper'),
-            'last_name' => env('FIRST_USER_LAST_NAME','Admin'),
-            'email' =>env('FIRST_USER_EMAIL','admin@infosoft.com'),
+            'first_name'        => config('account.first_name','Super '),
+            'middle_name'       => config('account.middle_name',''),
+            'last_name'         => config('account.last_name','Admin'),
+            'email'             => config('account.email','admin@admin.com'),
             'email_verified_at' => now(),
-            'remember_token' => Str::random(99),
-            'password' => Hash::make(env('FIRST_USER_PASSWORD','password'))
+            'remember_token'    => Str::random(99),
+            'password'          => Hash::make(config('account.password','password'))
         ]);
 
-        Bouncer::assign('super-admin')->to(User::where('email', env('FIRST_USER_EMAIL','admin@infosoft.com'))->first());
+        Bouncer::assign('super-admin')->to(User::where('email', config('account.email','admin@admin.com'))->first());
 
-        $methods = ['Index','Create','Store','Show','Edit','Update','Destroy','ForceDelete','Restore', 'Upload'];
+        $methods = ['Index','Create','Store','Show','Edit','Update','SoftDelete','PermanentDelete','Restore', 'Upload'];
         $controllerDirectory = app_path('Http/Controllers');
         $controllerFiles = scandir($controllerDirectory);
         $excluded =['Auth'];

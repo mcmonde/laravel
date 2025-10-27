@@ -28,7 +28,7 @@ class GenerateMultipleRequest extends Command
      */
     public function handle(): void
     {
-        $methods = ['Index','Create','Store','Show','Edit','Update','Destroy','ForceDelete','Restore','Upload'];
+        $methods = ['Index','Create','Store','Show','Edit','Update','SoftDelete','PermanentDelete','Restore','Upload'];
         $model_name = ucfirst($this->argument('modelName'));
         $model_class = "App\\Models\\$model_name";
 

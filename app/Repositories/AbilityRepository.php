@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Ability;
-use App\Traits\QueryGenerator;
+use App\Traits\HasRepositoryCrud;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -12,7 +12,7 @@ use Bouncer;
 
 class AbilityRepository
 {
-    use QueryGenerator;
+    use HasRepositoryCrud;
 
     protected Ability $model;
 

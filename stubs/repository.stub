@@ -3,11 +3,11 @@
 namespace {{ namespace }};
 
 use App\Models\{{ class }};
-use App\Traits\QueryGenerator;
+use App\Traits\HasRepositoryCrud;
 
 class {{ class }}Repository
 {
-    use QueryGenerator;
+    use HasRepositoryCrud;
 
     protected {{ class }} $model;
 

@@ -17,73 +17,71 @@ use Illuminate\Http\JsonResponse;
 
 class {{ class }} extends Controller
 {
-//    protected {{ model }}Repository ${{ model }}Repository;
+//    protected {{ model }}Repository $repository;
 
-//    public function __construct({{ model }}Repository ${{ model }}Repository)
+//    public function __construct({{ model }}Repository $repository)
 //    {
-//        $this->{{ model }}Repository = ${{ model }}Repository;
+//        $this->repository = $repository;
 //    }
 
     public function index(Index $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->index($payload, $this->selected_relation_columns_only, $this->headers);
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->index($payload);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function create(Create $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->create();
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->create();
+        return $this->repository->getJsonResponse($data);
     }
 
     public function store(Store $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->store($payload, $this->selected_relation_columns_only, $this->headers);
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->store($payload);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function show(Show $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->show($id, $this->selected_relation_columns_only);
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->show($id);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function edit(Edit $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->edit($id, $this->selected_relation_columns_only);
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->edit($id);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function update(Update $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->update($payload, $id);
+        return $this->repository->getJsonResponse($data);
     }
 
-    public function destroy(Destroy $request, $id): JsonResponse
+    public function softDelete(SoftDelete $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->{{ model }}Repository->destroy($id, $this->selected_relation_columns_only);
-        return $this->{{ model }}Repository->getJsonResponse($data);
+        $data = $this->repository->softDelete($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
-//  DEPRICATED. NO LONGER IN USE UNLESS ITS REALLY NECESSARY.
+    public function permanentDelete(PermanentDelete $request, $id): JsonResponse
+    {
+        $data = $this->repository->permanentDelete($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
+    }
 
-//    public function forceDelete(ForceDelete $request, $id): JsonResponse
-//    {
-//        $data = $this->{{ model }}Repository->forceDelete($id, $this->selected_relation_columns_only);
-//        return $this->{{ model }}Repository->getJsonResponse($data);
-//    }
-//
-//    public function restore(Restore $request, $id): JsonResponse
-//    {
-//        $data = $this->{{ model }}Repository->restore($id, $this->selected_relation_columns_only);
-//        return $this->{{ model }}Repository->getJsonResponse($data);
-//    }
+    public function restore(Restore $request, $id): JsonResponse
+    {
+        $data = $this->repository->restore($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
+    }
 }

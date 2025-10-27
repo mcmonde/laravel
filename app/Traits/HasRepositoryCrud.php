@@ -11,92 +11,93 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
-trait QueryGenerator
+trait HasRepositoryCrud
 {
-    public function index($payload, $selected_relation_columns_only = [], $headers = []): array
+    public function index($payload): array
     {
+        $search = $payload['search_global'] ?? null;
         $excludedIds = $payload['excluded_id'] ?? null;
+        $includedIds = $payload['included_id'] ?? null;
+
+        $filters = [];
+        $sort = [];
+
 
         $tableName = $this->model->getTable();
-        $query = $this->model::query();
         $ability = Str::plural(str_replace('_', '-', Str::snake($tableName)));
 
-        // Get relations of the current table
-        $foreignRelations = $this->getForeignTableRelations($tableName);
-        $allTables = array_merge([['local' => null, 'table' => $tableName, 'foreign' => null, 'table_alias' => null]], $foreignRelations);
+        // ADD CONDITIONS FOR FILTERS HERE:
 
-        // Generate selects based on foreign tables and selected columns
-        $selects = $this->generateSelects($allTables, $selected_relation_columns_only);
-        if (!empty($selects)) {
-            $query->select($selects['selects']);
+        // if ($excludedIds) {
+        //     $filters[] = 'relation_id NOT IN ['.implode(', ',$excludedIds).']';
+        // }
+        // if ($includedIds) {
+        //     $filters[] = 'relation_id IN ['.implode(', ', $includedIds).']';
+        // }
+
+        $filterString = implode(' AND ', $filters);
+
+        if (!$search) {
+            $query = $this->model->getTable();
+            $total = $query->count();
+            $pagination = $this->paginate($payload, $total);
+
+            // ADD CUSTOM QUERIES HERE:
+
+            // $query
+            //     ->when()
+            //     ->whereHas()
+            //     ->with()
+
+            // ALWAYS REDECLARE TOTAL AFTER A CUSTOM QUERY FOR RECOUNT
+            // $total = $query->count();
+
+            // ADD CUSTOM ORDER BY HERE
+
+            // if ($latest) {
+            //     $query->orderByDesc('relation.created_at');
+            // } else {
+            //     $query->orderByDesc('created_at');
+            // }
+
+            $ids = $query
+                ->skip($pagination['skip'])
+                ->take($pagination['take'])
+                ->get()
+                ->pluck('id');
+
+            $ids = implode(',', $ids->toArray());
+
+            $data = $this->model::search($search, function ($meilisearch, $query, $options) use ($ids) {
+                $options['filter'] = 'resolutions_id IN ['.$ids.']';
+                $options['sort'] = [
+                    'resolutions_created_at:desc'
+                ];
+                return $meilisearch->search($query, $options);
+            })->raw();
+
+            $lastPage = ($pagination['take'] > 0) ? ceil($total / $pagination['take']) : 1;
+        } else {
+            $pagination = $this->paginate($payload, 1000);
+            $data = $this->model::search($search, function ($meilisearch, $query, $options) use ($filterString, $pagination, $sort) {
+                if ($filterString) {
+                    $options['filter'] = $filterString;
+                }
+                if ($sort) {
+                    $options['sort'] = $sort;
+                } else {
+                    $options['sort'] = [
+                        'resolutions_created_at:desc'
+                    ];
+                }
+                $options['offset'] = $pagination['skip'];
+                $options['limit'] = $pagination['take'];
+                return $meilisearch->search($query, $options);
+            })->raw();
+
+            $total = $data['estimatedTotalHits'];
+            $lastPage = ($pagination['take'] > 0) ? ceil($total / $pagination['take']) : 1;
         }
-
-        // Apply joins for foreign tables via separate function
-        $this->applyLeftJoins($query, $foreignRelations, $tableName);
-
-        // Exclude specific IDs if provided
-        if ($excludedIds) {
-            $query->whereNotIn("{$tableName}.id", $excludedIds);
-        }
-
-        // Handle search filters
-        $this->search($payload, $query, $selects);
-        $this->searchGlobal($payload, $query, $selects);
-
-        // Apply ordering
-        foreach ($this->orderBy($payload) as $order) {
-            $query->orderBy($order['order_by'], $order['sort_order']);
-        }
-
-        // Get total count for pagination
-        $total = $query->count();
-
-        // NOTE! USE THIS ONLY WHEN YOU USE GROUP BY
-//        // Perform a subquery to count individual rows
-//        $subQuery = clone $query;
-//        $subQuery->select(DB::raw('COUNT(*) as count'))->getQuery();
-//        // Use the subquery to count rows
-//        $total = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
-//            ->mergeBindings($subQuery->getQuery())
-//            ->count();
-
-        // Apply pagination logic
-        $pagination = $this->paginate($payload, $total);
-        $list = $query->skip($pagination['skip'])->take($pagination['take'])->get();
-
-        // NOTE: Use only when there is a need to convert json formatted columns or select query.
-//        $list->transform(function ($item) {
-//            $json_column_name = json_decode($item->json_column_name, true);
-//            $item->json_column_name = isset($json_column_name[0]['id']) ? $json_column_name : [];
-//            return $item;
-//        });
-
-        // Return if no results found
-        if ($list->isEmpty()) {
-            return [
-                'message' => 'No results found.',
-                'error' => null,
-                'current_page' => null,
-                'from' => null,
-                'to' => null,
-                'last_page' => null,
-                'skip' => null,
-                'take' => null,
-                'total' => null,
-                'headers' => $headers,
-                'body' => null,
-                'searchable' => $selects['columns'],
-                'others'    => [
-                    'view'          => Bouncer::can($ability.'.show'),
-                    'store'         => Bouncer::can($ability.'.store'),
-                    'update'        => Bouncer::can($ability.'.update'),
-                    'delete'        => Bouncer::can($ability.'.destroy')
-                ]
-            ];
-        }
-
-        // Calculate last page
-        $lastPage = ($pagination['take'] > 0) ? ceil($total / $pagination['take']) : 1;
 
         return [
             'message' => 'These are the results.',
@@ -108,9 +109,9 @@ trait QueryGenerator
             'skip' => $pagination['skip'],
             'take' => $pagination['take'],
             'total' => $total,
-            'headers' => $headers,
-            'body' => $list,
-            'searchable' => $selects['columns'],
+            'headers' => null,
+            'body' => $data['hits'],
+            'searchable' => null,
             'others'    => [
                 'view'          => Bouncer::can($ability.'.show'),
                 'store'         => Bouncer::can($ability.'.store'),
@@ -219,7 +220,7 @@ trait QueryGenerator
         return $result;
     }
 
-    public function destroy($id, $selected_relation_columns_only = []): array
+    public function softDelete($id, $selected_relation_columns_only = []): array
     {
         $data = $this->model::find($id);
 
@@ -263,96 +264,96 @@ trait QueryGenerator
         ]);
     }
 
-//    public function forceDelete($id, $selected_relation_columns_only = []): array
-//    {
-//        $data = $this->model::when(in_array(SoftDeletes::class, class_uses($this->model)), function ($q) {
-//            $q->withTrashed();
-//        })
-//            ->find($id);
-//
-//        if (!$data) {
-//            return [
-//                'message' => 'No found data.',
-//                'status' => 404,
-//            ];
-//        }
-//
-//        $model_name = $this->model->getTable();
-//        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
-//
-//        // TODO add checking for relations before permanent deletion.
-//        DB::beginTransaction();
-//        try {
-//            $data->forceDelete();
-//            DB::commit();
-//        } catch (\Exception $exception) {
-//            DB::rollBack();
-//            // Please review the Logs if there are errors.
-//            return [
-//                'message' => 'An error occurred while invoking permanent deletion.',
-//                'error' => $exception->getMessage(),
-//                'status' => 422
-//            ];
-//        }
-//
-//        return ([
-//            'message' => 'Permanently deleted the data.',
-//            'error' => null,
-//            'current_page' => null,
-//            'from' => null,
-//            'to' => null,
-//            'last_page' => null,
-//            'skip' => null,
-//            'take' => null,
-//            'total' => null,
-//            'headers' => null,
-//            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
-//            'searchable' => null,
-//        ]);
-//    }
-//
-//    public function restore($id, $selected_relation_columns_only = []): array
-//    {
-//        $data = $this->model::find($id);
-//
-//        if (!$data) {
-//            return [
-//                'message' => 'No found data.',
-//                'status' => 404,
-//            ];
-//        }
-//
-//        $model_name = $this->model->getTable();
-//        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
-//
-//        DB::beginTransaction();
-//        try {
-//            $data->restore();
-//        } catch (\Exception $exception) {
-//            DB::rollBack();
-//            // Please review the Logs if there are errors.
-//            return [
-//                'message' => 'An error occurred while storing the purchase order.',
-//                'error' => $exception->getMessage(),
-//                'status' => 422
-//            ];
-//        }
-//
-//        return ([
-//            'message' => 'Successfully restored data.',
-//            'error' => null,
-//            'current_page' => null,
-//            'from' => null,
-//            'to' => null,
-//            'last_page' => null,
-//            'skip' => null,
-//            'take' => null,
-//            'total' => null,
-//            'headers' => null,
-//            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
-//            'searchable' => null,
-//        ]);
-//    }
+    public function permanentDelete($id, $selected_relation_columns_only = []): array
+    {
+        $data = $this->model::when(in_array(SoftDeletes::class, class_uses($this->model)), function ($q) {
+            $q->withTrashed();
+        })
+            ->find($id);
+
+        if (!$data) {
+            return [
+                'message' => 'No found data.',
+                'status' => 404,
+            ];
+        }
+
+        $model_name = $this->model->getTable();
+        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+
+        // TODO add checking for relations before permanent deletion.
+        DB::beginTransaction();
+        try {
+            $data->forceDelete();
+            DB::commit();
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            // Please review the Logs if there are errors.
+            return [
+                'message' => 'An error occurred while invoking permanent deletion.',
+                'error' => $exception->getMessage(),
+                'status' => 422
+            ];
+        }
+
+        return ([
+            'message' => 'Permanently deleted the data.',
+            'error' => null,
+            'current_page' => null,
+            'from' => null,
+            'to' => null,
+            'last_page' => null,
+            'skip' => null,
+            'take' => null,
+            'total' => null,
+            'headers' => null,
+            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+            'searchable' => null,
+        ]);
+    }
+
+    public function restore($id, $selected_relation_columns_only = []): array
+    {
+        $data = $this->model::find($id);
+
+        if (!$data) {
+            return [
+                'message' => 'No found data.',
+                'status' => 404,
+            ];
+        }
+
+        $model_name = $this->model->getTable();
+        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+
+        DB::beginTransaction();
+        try {
+            $data->restore();
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            // Please review the Logs if there are errors.
+            return [
+                'message' => 'An error occurred while storing the purchase order.',
+                'error' => $exception->getMessage(),
+                'status' => 422
+            ];
+        }
+
+        return ([
+            'message' => 'Successfully restored data.',
+            'error' => null,
+            'current_page' => null,
+            'from' => null,
+            'to' => null,
+            'last_page' => null,
+            'skip' => null,
+            'take' => null,
+            'total' => null,
+            'headers' => null,
+            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+            'searchable' => null,
+        ]);
+    }
 
     // LIES CUSTOM QUERY GENERATORS HERE
 

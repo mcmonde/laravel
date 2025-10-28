@@ -11,7 +11,7 @@ class RSAService implements CryptoServiceInterface
 
     public function __construct()
     {
-        if(env('ENABLE_LOGIN_RSA', false))
+        if(config('rsa.enable_login_rsa', false))
             $this->privateKey = file_get_contents(storage_path('app/keys/private.pem'));
     }
 

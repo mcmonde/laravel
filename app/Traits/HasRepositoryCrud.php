@@ -26,14 +26,14 @@ trait HasRepositoryCrud
         $tableName = $this->model->getTable();
         $ability = Str::plural(str_replace('_', '-', Str::snake($tableName)));
 
-        // ADD CONDITIONS FOR FILTERS HERE:
 
-        // if ($excludedIds) {
-        //     $filters[] = 'relation_id NOT IN ['.implode(', ',$excludedIds).']';
-        // }
-        // if ($includedIds) {
-        //     $filters[] = 'relation_id IN ['.implode(', ', $includedIds).']';
-        // }
+        if ($excludedIds) {
+            $filters[] = 'relation_id NOT IN ['.implode(', ',$excludedIds).']';
+        }
+        if ($includedIds) {
+            $filters[] = 'relation_id IN ['.implode(', ', $includedIds).']';
+        }
+        // ADD MORE CONDITIONS FOR FILTERS HERE...
 
         $filterString = implode(' AND ', $filters);
 
@@ -69,14 +69,13 @@ trait HasRepositoryCrud
             $ids = implode(',', $ids->toArray());
 
             $data = $this->model::search($search, function ($meilisearch, $query, $options) use ($ids) {
-                $options['filter'] = 'resolutions_id IN ['.$ids.']';
+                $options['filter'] = 'id IN ['.$ids.']';
                 $options['sort'] = [
-                    'resolutions_created_at:desc'
+                    'created_at:desc'
                 ];
                 return $meilisearch->search($query, $options);
             })->raw();
 
-            $lastPage = ($pagination['take'] > 0) ? ceil($total / $pagination['take']) : 1;
         } else {
             $pagination = $this->paginate($payload, 1000);
             $data = $this->model::search($search, function ($meilisearch, $query, $options) use ($filterString, $pagination, $sort) {
@@ -96,8 +95,9 @@ trait HasRepositoryCrud
             })->raw();
 
             $total = $data['estimatedTotalHits'];
-            $lastPage = ($pagination['take'] > 0) ? ceil($total / $pagination['take']) : 1;
         }
+
+        $lastPage = ($pagination['take'] > 0) ? ceil($total / $pagination['take']) : 1;
 
         return [
             'message' => 'These are the results.',
@@ -135,14 +135,12 @@ trait HasRepositoryCrud
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => [
-                'columns' => $this->getTableColumnDetails($this->model->getTable()),
-            ],
+            'body' => [],
             'searchable' => null,
         ]);
     }
 
-    public function store($payload, $selected_relation_columns_only = [], $headers = []): array
+    public function store($payload): array
     {
         DB::beginTransaction();
         try {
@@ -150,7 +148,7 @@ trait HasRepositoryCrud
 
             $model_name = $this->model->getTable();
 
-            $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $data['id'],]]], $selected_relation_columns_only, $headers);
+            $result = $this->index(['included_id' => [$data['id']]] );
 
             if ($result['body'])
                 $result['message'] = 'Successfully created.';
@@ -168,11 +166,11 @@ trait HasRepositoryCrud
         }
     }
 
-    public function show($id, $selected_relation_columns_only = []): array
+    public function show($id): array
     {
-        $model_name = $this->model->getTable();
+        $payload = ['included_id' => [$id]];
 
-        $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $id,]]], $selected_relation_columns_only);
+        $result = $this->index($payload);
 
         if ($result['body'])
             $result['message'] = 'Showing data.';
@@ -180,12 +178,11 @@ trait HasRepositoryCrud
         return $result;
     }
 
-    public function edit($id, $selected_relation_columns_only = []): array
+    public function edit($id): array
     {
-        $model_name = $this->model->getTable();
-        $payload = ['search' => [['key' => "$model_name.id", 's' => $id,]]];
+        $payload = ['included_id' => [$id]];
 
-        $result = $this->index($payload, $selected_relation_columns_only);
+        $result = $this->index($payload);
 
         if ($result['body'])
             $result['message'] = 'Editing data.';
@@ -193,34 +190,42 @@ trait HasRepositoryCrud
         return $result;
     }
 
-    public function update($payload, $id, $selected_relation_columns_only = [], $headers = []): array
+    public function update($payload, $id): array
     {
-        $model_name = $this->model->getTable();
-        $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $id,]]], $selected_relation_columns_only, $headers);
+        // TODO add a checker if multiple people is updating same id. Should not update if the current update is spoiled.
 
-        if ($result['body']) {
-            DB::beginTransaction();
-            try {
-                $this->model::find($id)->update($payload);
+        $data = $this->model::find($id);
 
-                $result = $this->index(['search' => [['key' => "$model_name.id", 's' => $id,]]]);
-                $result['message'] = 'Successfully updated data.';
-                DB::commit();
-            } catch (\Exception $exception) {
-                DB::rollBack();
-                // Please review the Logs if there are errors.
-                return [
-                    'message' => 'An error occurred while updating.',
-                    'error' => $exception->getMessage(),
-                    'status' => 422
-                ];
-            }
+        if (!$data) {
+            return [
+                'message' => 'No found data.',
+                'status' => 404,
+            ];
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $data->update($payload);
+
+            $result = $this->index(['included_id' => [$id]]);
+            $result['message'] = 'Successfully updated data.';
+
+            DB::commit();
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            // Please review the Logs if there are errors.
+            return [
+                'message' => 'An error occurred while updating.',
+                'error' => $exception->getMessage(),
+                'status' => 422
+            ];
         }
 
         return $result;
     }
 
-    public function softDelete($id, $selected_relation_columns_only = []): array
+    public function softDelete($id): array
     {
         $data = $this->model::find($id);
 
@@ -232,9 +237,9 @@ trait HasRepositoryCrud
         }
 
         DB::beginTransaction();
+
         try {
-            $model_name = $this->model->getTable();
-            $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+            $old = $this->index(['included_id' => [$id]]);
             $data->delete();
 
             DB::commit();
@@ -259,17 +264,16 @@ trait HasRepositoryCrud
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+            'body' => $old['body'],
             'searchable' => null,
         ]);
     }
 
-    public function permanentDelete($id, $selected_relation_columns_only = []): array
+    public function permanentDelete($id): array
     {
         $data = $this->model::when(in_array(SoftDeletes::class, class_uses($this->model)), function ($q) {
-            $q->withTrashed();
-        })
-            ->find($id);
+                    $q->withTrashed(); })
+                ->find($id);
 
         if (!$data) {
             return [
@@ -278,12 +282,12 @@ trait HasRepositoryCrud
             ];
         }
 
-        $model_name = $this->model->getTable();
-        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
+        $payload = ['included_id' => [$id]];
 
         // TODO add checking for relations before permanent deletion.
         DB::beginTransaction();
         try {
+            $old = $this->index(['included_id' => [$id]]);
             $data->forceDelete();
             DB::commit();
         } catch (\Exception $exception) {
@@ -307,14 +311,14 @@ trait HasRepositoryCrud
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+            'body' => $old['body'],
             'searchable' => null,
         ]);
     }
 
-    public function restore($id, $selected_relation_columns_only = []): array
+    public function restore($id): array
     {
-        $data = $this->model::find($id);
+        $data = $this->model::withTrashed()->find($id);
 
         if (!$data) {
             return [
@@ -323,9 +327,6 @@ trait HasRepositoryCrud
             ];
         }
 
-        $model_name = $this->model->getTable();
-        $payload = ['search' => [['key' => "$model_name.id", 's' => $data['id'],]]];
-
         DB::beginTransaction();
         try {
             $data->restore();
@@ -333,7 +334,7 @@ trait HasRepositoryCrud
             DB::rollBack();
             // Please review the Logs if there are errors.
             return [
-                'message' => 'An error occurred while storing the purchase order.',
+                'message' => 'An error occurred while storing',
                 'error' => $exception->getMessage(),
                 'status' => 422
             ];
@@ -350,7 +351,7 @@ trait HasRepositoryCrud
             'take' => null,
             'total' => null,
             'headers' => null,
-            'body' => $this->index($payload, $selected_relation_columns_only)['body'],
+            'body' => $this->index(['included_id' => [$id]])['body'],
             'searchable' => null,
         ]);
     }

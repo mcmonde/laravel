@@ -47,7 +47,7 @@ Route::group(['middleware' => ["auth:sanctum", 'log.route']], function () {
 
                     // if the model uses soft-deletes enable these routes.
                     if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses('App\\Models\\' . $name_case))) {
-                        Route::delete($controller['slug'] . '/sotf-delete/{' . $controller['name'] . '}', 'softDelete')->name($controller['slug'] . '.destroy');
+                        Route::delete($controller['slug'] . '/soft-delete/{' . $controller['name'] . '}', 'softDelete')->name($controller['slug'] . '.destroy');
 
                         Route::post($controller['slug'] . '/{' . $controller['name'] . '}' . '/restore', 'restore')->name($controller['slug'] . '.restore');
                         Route::delete($controller['slug'] . '/permanent-delete/{' . $controller['name'] . '}', 'permanentDelete')->name($controller['slug'] . '.force-delete');

@@ -10,11 +10,11 @@ use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    protected AuthRepository $authRepository;
+    protected AuthRepository $repository;
 
-    public function __construct(AuthRepository $authRepository)
+    public function __construct(AuthRepository $repository)
     {
-        $this->authRepository = $authRepository;
+        $this->repository = $repository;
     }
 
     public function login(Login $request): JsonResponse
@@ -23,7 +23,7 @@ class AuthController extends Controller
         $credentials['user_agent'] = request()->header('User-Agent');
         $credentials['ip_address'] = request()->ip();
 
-        $data = $this->authRepository->login($credentials);
+        $data = $this->repository->login($credentials);
 
         $status = 200;
 
@@ -35,7 +35,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): string
     {
-        $data = $this->authRepository->logout($request);
+        $data = $this->repository->logout($request);
         return response()->json($data);
     }
 

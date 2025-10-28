@@ -6,7 +6,7 @@ use App\Traits\PayloadRuleTrait;
 use Illuminate\Foundation\Http\FormRequest;
 use Bouncer;
 
-class ForceDelete extends FormRequest
+class PermanentDelete extends FormRequest
 {
     use PayloadRuleTrait;
 

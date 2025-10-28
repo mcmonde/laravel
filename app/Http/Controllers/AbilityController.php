@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Ability\Create;
-use App\Http\Requests\Ability\Destroy;
+use App\Http\Requests\Ability\Softdelete;
 use App\Http\Requests\Ability\Edit;
-use App\Http\Requests\Ability\ForceDelete;
+use App\Http\Requests\Ability\PermanentDelete;
 use App\Http\Requests\Ability\Index;
 use App\Http\Requests\Ability\Restore;
 use App\Http\Requests\Ability\Show;
@@ -17,7 +17,7 @@ use Illuminate\Http\JsonResponse;
 
 class AbilityController extends Controller
 {
-    protected AbilityRepository $AbilityRepository;
+    protected AbilityRepository $repository;
     protected array $selected_relation_columns_only = [
         'abilities'   => ['id','name','title'],
     ];
@@ -26,71 +26,71 @@ class AbilityController extends Controller
         ['text' => 'Title', 'value' => 'abilities_title', 'align' => 'left', 'sortable' => false],
     ];
 
-    public function __construct(AbilityRepository $AbilityRepository)
+    public function __construct(AbilityRepository $repository)
     {
-        $this->AbilityRepository = $AbilityRepository;
+        $this->repository = $repository;
     }
 
     public function index(Index $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->AbilityRepository->index($payload, $this->selected_relation_columns_only, $this->headers);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->index($payload, $this->selected_relation_columns_only, $this->headers);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function create(Create $request): JsonResponse
     {
-        $data = $this->AbilityRepository->create();
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->create();
+        return $this->repository->getJsonResponse($data);
     }
 
     public function store(Store $request): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->AbilityRepository->store($payload, $this->selected_relation_columns_only, $this->headers);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->store($payload, $this->selected_relation_columns_only, $this->headers);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function show(Show $request, $id): JsonResponse
     {
-        $data = $this->AbilityRepository->show($id, $this->selected_relation_columns_only);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->show($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function edit(Edit $request, $id): JsonResponse
     {
-        $data = $this->AbilityRepository->edit($id, $this->selected_relation_columns_only);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->edit($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function update(Update $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->AbilityRepository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->update($payload, $id, $this->selected_relation_columns_only, $this->headers);
+        return $this->repository->getJsonResponse($data);
     }
 
-    public function destroy(Destroy $request, $id): JsonResponse
+    public function softDelete(SoftDelete $request, $id): JsonResponse
     {
-        $data = $this->AbilityRepository->destroy($id, $this->selected_relation_columns_only);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->softDelete($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
-    public function forceDelete(ForceDelete $request, $id): JsonResponse
+    public function permanentDelete(PermanentDelete $request, $id): JsonResponse
     {
-        $data = $this->AbilityRepository->forceDelete($id, $this->selected_relation_columns_only);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->permanentDelete($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function restore(Restore $request, $id): JsonResponse
     {
-        $data = $this->AbilityRepository->restore($id, $this->selected_relation_columns_only);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->restore($id, $this->selected_relation_columns_only);
+        return $this->repository->getJsonResponse($data);
     }
 
     public function getCurrentAbilities(Current $request): JsonResponse
     {
-        $data = $this->AbilityRepository->getAbilityUrl($request);
-        return $this->AbilityRepository->getJsonResponse($data);
+        $data = $this->repository->getAbilityUrl($request);
+        return $this->repository->getJsonResponse($data);
     }
 }

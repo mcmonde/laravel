@@ -3,12 +3,12 @@
 namespace {{ namespace }};
 
 use App\Http\Requests\{{ model }}\Create;
-use App\Http\Requests\{{ model }}\Destroy;
 use App\Http\Requests\{{ model }}\Edit;
-use App\Http\Requests\{{ model }}\ForceDelete;
 use App\Http\Requests\{{ model }}\Index;
+use App\Http\Requests\{{ model }}\PermanentDelete;
 use App\Http\Requests\{{ model }}\Restore;
 use App\Http\Requests\{{ model }}\Show;
+use App\Http\Requests\{{ model }}\SoftDelete;
 use App\Http\Requests\{{ model }}\Store;
 use App\Http\Requests\{{ model }}\Update;
 use App\Repositories\{{ model }}Repository;
@@ -69,19 +69,19 @@ class {{ class }} extends Controller
     public function softDelete(SoftDelete $request, $id): JsonResponse
     {
         $payload = $request->validated();
-        $data = $this->repository->softDelete($id, $this->selected_relation_columns_only);
+        $data = $this->repository->softDelete($id);
         return $this->repository->getJsonResponse($data);
     }
 
     public function permanentDelete(PermanentDelete $request, $id): JsonResponse
     {
-        $data = $this->repository->permanentDelete($id, $this->selected_relation_columns_only);
+        $data = $this->repository->permanentDelete($id);
         return $this->repository->getJsonResponse($data);
     }
 
     public function restore(Restore $request, $id): JsonResponse
     {
-        $data = $this->repository->restore($id, $this->selected_relation_columns_only);
+        $data = $this->repository->restore($id);
         return $this->repository->getJsonResponse($data);
     }
 }

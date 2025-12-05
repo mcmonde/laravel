@@ -18,7 +18,7 @@ class AuthRepository
         $email = $credentials['email'];
         $password = $credentials['password'];
 
-        if (env('ENABLE_LOGIN_RSA', false)) {
+        if (config('rsa.enable_login_rsa', false)) {
            $password = $this->rsaService->decrypt($password);
         }
 
@@ -39,14 +39,11 @@ class AuthRepository
                             'ip_address' => $ip_address
                         ]);
 
-                    // Record login history
-                    //                $this->recordLoginHistory($user, $request);
-
                     return ([
                         'message' => 'Logged in successfully.',
                         'user' => $user->load(['roles']),
                         'forbidden' => $user->getForbiddenAbilities(),
-                        'encrypted' => env('ENABLE_LOGIN_RSA', false),
+                        'encrypted' => config('rsa.enable_login_rsa', false),
                         'token' => $token->plainTextToken,
                     ]);
                 } else {

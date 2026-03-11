@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use App\Traits\HasDynamicFillable;
 use App\Traits\HasDynamicRelations;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -15,6 +17,8 @@ use Silber\Bouncer\Database\HasRolesAndAbilities;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
     use HasFactory,
         Notifiable,
         HasApiTokens,
